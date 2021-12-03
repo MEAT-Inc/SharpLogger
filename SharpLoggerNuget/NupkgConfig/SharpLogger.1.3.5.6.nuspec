@@ -2,7 +2,7 @@
 <package >
     <metadata>
         <id>SharpLogger</id>
-        <version>1.3.5.5</version>
+        <version>1.3.5.6</version>
         <title>SharpLogger</title>
         <authors>Zachary Walsh - MEAT Inc</authors>
         <requireLicenseAcceptance>true</requireLicenseAcceptance>
@@ -18,14 +18,15 @@
 ### Change Log For Release
 - Changed some namespace things around and built in some new code changes for logic modifications
 - No longer requiring input json config objects for logging input setup
+- Fixed an issue with the Nuget JSON dependencies. Name was incorrect on it but is now fixed.
         </description>
         <releaseNotes>RELEASE NOTES GO HERE</releaseNotes>
         <copyright>MEAT Inc (2021)</copyright>
-        <tags>1.3.5.5-RC</tags>
+        <tags>1.3.5.6-RC</tags>
         <dependencies>
             <group targetFramework=".NETFramework4.7.2">
                 <dependency id="NLog" version="4.7.12"/>
-                <dependency id="Newtonsoft.Json" version="13.0.1"/>
+                <dependency id="Newtonsoft.JSON" version="13.0.1"/>
             </group>
         </dependencies>
         <references>
