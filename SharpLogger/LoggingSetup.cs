@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Reflection;
+using SharpLogger.LoggerSupport;
 
 namespace SharpLogger
 {
