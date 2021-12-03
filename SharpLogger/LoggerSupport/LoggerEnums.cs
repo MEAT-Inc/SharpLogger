@@ -1,4 +1,6 @@
-﻿namespace SharpLogger.LoggerSupport
+﻿using NLog;
+
+namespace SharpLogger.LoggerSupport
 {
     /// <summary>
     /// Wrapped log level type so NLOG isn't a required ref for anything that uses this.

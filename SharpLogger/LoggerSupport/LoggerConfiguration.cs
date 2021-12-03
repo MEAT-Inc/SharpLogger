@@ -1,4 +1,7 @@
-﻿namespace SharpLogger.LoggerSupport
+﻿using NLog.Layouts;
+using NLog.Targets;
+
+namespace SharpLogger.LoggerSupport
 {
     internal static class WatchdogLoggerConfiguration
     {

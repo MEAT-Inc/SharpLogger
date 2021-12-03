@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using NLog;
 using SharpLogger.LoggerSupport;
 
 namespace SharpLogger.LoggerObjects
