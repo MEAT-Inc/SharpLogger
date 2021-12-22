@@ -177,8 +177,7 @@ namespace SharpLogger
             // Locate the archive sets to keep
             var ArchiveSetsToKeep = LogArchivesLocated
                 .OrderBy(ArchiveObj => new FileInfo(ArchiveObj).LastWriteTime)
-                .Take(ArchiveLimit)
-                .ToArray();
+                .Reverse().Take(ArchiveLimit).ToArray();
             var ArchiveSetsToRemove = LogArchivesLocated
                 .Where(ArchiveObj => !ArchiveSetsToKeep.Contains(ArchiveObj))
                 .ToArray();

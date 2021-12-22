@@ -16,9 +16,12 @@
   - ` dotnet add PROJECT package SharpLogger --version LATEST `
 --- 
 ### Change Log For Release
-Json
+- Json conditional deserialize is now in place along with removing the need to configure manual values for the logger archive cleanup value.
+- Configured new logger cleanup methods to pull JSON values as desired and built in new JSON config object properties
 </description>
-    <releaseNotes>Json
+    <releaseNotes>
+- Json conditional deserialize is now in place along with removing the need to configure manual values for the logger archive cleanup value.
+- Configured new logger cleanup methods to pull JSON values as desired and built in new JSON config object properties
 </releaseNotes>
     <copyright>MEAT Inc (2021)</copyright>
     <tags>1,4,8.107-LTS</tags>
