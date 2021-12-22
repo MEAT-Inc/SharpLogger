@@ -196,7 +196,7 @@ namespace SharpLogger
                     Logger?.WriteLog($"REMOVING ARCHIVE OBJECT {LogArchiveSet} NOW...", LogType.TraceLog);
 
                     // Try and remove the file. If failed log so
-                    try { File.Delete(LogArchivePath); }
+                    try { File.Delete(LogArchiveSet); }
                     catch { Logger?.WriteLog($"FAILED TO REMOVE ARCHIVE SET: {LogArchiveSet}!! THIS IS WEIRD!", LogType.WarnLog); }
                 }
             });
