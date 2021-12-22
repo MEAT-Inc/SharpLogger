@@ -89,7 +89,7 @@ namespace SharpLogger
         /// <param name="MaxFileCount">Max number of current logs to contain</param>
         /// <param name="ArchiveSetSize">Number of files to contain inside each archive file.</param>
         /// </summary>
-        public static void CleanupLogHistory(string ArchiveConfigString, string FileNameFilter = "", int ArchiveLimit = 50)
+        public static void CleanupLogHistory(string ArchiveConfigString, string FileNameFilter = "")
         {
             // Build an archive object here.
             LogArchiveConfiguration Config;
@@ -104,7 +104,8 @@ namespace SharpLogger
                 .ToArray();
 
             // Remove 5 files from this list to keep current log files out.
-            LogFilesLocated = LogFilesLocated.Take(LogFilesLocated.Length - 5).ToArray();
+            int RemainderFiles = LogFilesLocated.Length > 5 ? 5 : 0;
+            LogFilesLocated = LogFilesLocated.Take(LogFilesLocated.Length - RemainderFiles).ToArray();
             List<string[]> LogFileArchiveSets = LogFilesLocated.Select((FileName, FileIndex) => new { Index = FileIndex, Value = FileName })
                 .GroupBy(CurrentFile => CurrentFile.Index / Config.ArchiveFileSetSize)
                 .Select(FileSet => FileSet.Select(FileValue => FileValue.Value).ToArray())
@@ -141,10 +142,10 @@ namespace SharpLogger
 
                 // Now once done, configure the logging archive cleanup process
                 Logger?.WriteLog("CLEANING UP ARCHIVE SETS NOW...", LogType.WarnLog);
-                Logger?.WriteLog($"DESIRED TO KEEP A TOTAL OF {ArchiveLimit} ARCHIVE OVERALL!", LogType.WarnLog);
+                Logger?.WriteLog($"DESIRED TO KEEP A TOTAL OF {Config.ArchiveCleanupFileCount} ARCHIVE OVERALL!", LogType.WarnLog);
 
                 // Run the cleanup routine
-                CleanupArchiveHistory(Config.LogArchivePath, ArchiveLimit);
+                CleanupArchiveHistory(Config.LogArchivePath, FileNameFilter, Config.ArchiveCleanupFileCount);
                 Logger?.WriteLog("DONE CLEANING UP LOGGING OUTPUT FOR THE ARCHIVE FOLDER AND CURRENT LOG FILES!", LogType.InfoLog);
             });
         }
@@ -154,10 +155,17 @@ namespace SharpLogger
         /// <param name="MaxFileCount">Max number of current logs to contain</param>
         /// <param name="ArchiveSetSize">Number of files to contain inside each archive file.</param>
         /// </summary>
-        public static void CleanupArchiveHistory(string LogArchivePath, int ArchiveLimit = 50)
+        public static void CleanupArchiveHistory(string LogArchivePath, string ArchiveNameFilter = "", int ArchiveLimit = 50)
         {
             // Pull files out of the archive directory now
             var LogArchivesLocated = Directory.GetFiles(LogArchivePath, "*.zip*", SearchOption.AllDirectories);
+            if (ArchiveNameFilter != "")
+            {
+                Logger?.WriteLog($"ARCHIVE FILTERING BY NAME IS IN EFFECT! FILTERING WITH {ArchiveNameFilter}", LogType.WarnLog);
+                LogArchivesLocated = LogArchivesLocated.Where(FileObj => FileObj.Contains(ArchiveNameFilter)).ToArray();
+            }
+            
+            // Log how many files are found
             Logger?.WriteLog($"PULLED A TOTAL OF {LogArchivesLocated.Length} LOG ARCHIVE OBJECTS", LogType.InfoLog);
             if (LogArchivesLocated.Length < ArchiveLimit)
             {

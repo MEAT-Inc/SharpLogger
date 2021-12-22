@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using System.ComponentModel;
+using System.IO.Compression;
 using Newtonsoft.Json;
 
 namespace SharpLogger.LogArchiving
@@ -9,12 +10,25 @@ namespace SharpLogger.LogArchiving
     public class LogArchiveConfiguration
     {
         // Configuration values
+        [DefaultValue(false)] 
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public bool ProgressToConsole;
+        
+        // Archive path value
         public string LogArchivePath;
 
         // Archive set info.
+        [DefaultValue(15)] 
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]  
         public int ArchiveFileSetSize;
+        [DefaultValue(20)] 
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public int ArchiveOnFileCount;
+
+        // Archive Cleanup File Size Trigger
+        [DefaultValue(50)]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public int ArchiveCleanupFileCount;
 
         // Compression configuration
         [JsonIgnore] public CompressionLevel CompressionLevel;
