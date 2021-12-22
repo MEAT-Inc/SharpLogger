@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using NLog;
 using NLog.Config;
+using NLog.Fluent;
 using SharpLogger.LogArchiving;
 using SharpLogger.LoggerObjects;
 using SharpLogger.LoggerSupport;
@@ -103,7 +104,8 @@ namespace SharpLogger
                 .ToArray();
 
             // Remove 5 files from this list to keep current log files out.
-            LogFilesLocated = LogFilesLocated.Take(LogFilesLocated.Length - 5).ToArray();
+            int RemainderFiles = LogFilesLocated.Length > 5 ? 5 : 0;
+            LogFilesLocated = LogFilesLocated.Take(LogFilesLocated.Length - RemainderFiles).ToArray();
             List<string[]> LogFileArchiveSets = LogFilesLocated.Select((FileName, FileIndex) => new { Index = FileIndex, Value = FileName })
                 .GroupBy(CurrentFile => CurrentFile.Index / Config.ArchiveFileSetSize)
                 .Select(FileSet => FileSet.Select(FileValue => FileValue.Value).ToArray())
@@ -136,6 +138,67 @@ namespace SharpLogger
                     // Write entries for the files into the archiver now.
                     if (ArchiveBuilder.CompressFiles(out OutputArchive)) Logger?.WriteLog($"[{ArchiveName}] --> GENERATED NEW ZIP FILE OK!", LogType.InfoLog);
                     else Logger?.WriteLog($"[{ArchiveName}] --> FAILED TO WRITE LOG ENTRIES FOR ARCHIVE SET!", LogType.ErrorLog);
+                }
+
+                // Now once done, configure the logging archive cleanup process
+                Logger?.WriteLog("CLEANING UP ARCHIVE SETS NOW...", LogType.WarnLog);
+                Logger?.WriteLog($"DESIRED TO KEEP A TOTAL OF {Config.ArchiveCleanupFileCount} ARCHIVE OVERALL!", LogType.WarnLog);
+
+                // Run the cleanup routine
+                CleanupArchiveHistory(Config.LogArchivePath, FileNameFilter, Config.ArchiveCleanupFileCount);
+                Logger?.WriteLog("DONE CLEANING UP LOGGING OUTPUT FOR THE ARCHIVE FOLDER AND CURRENT LOG FILES!", LogType.InfoLog);
+            });
+        }
+        /// <summary>
+        /// Cleans out the log history objects for the current server
+        /// <param name="ArchivePath">Path to store the archived files in</param>
+        /// <param name="MaxFileCount">Max number of current logs to contain</param>
+        /// <param name="ArchiveSetSize">Number of files to contain inside each archive file.</param>
+        /// </summary>
+        public static void CleanupArchiveHistory(string LogArchivePath, string ArchiveNameFilter = "", int ArchiveLimit = 50)
+        {
+            // Pull files out of the archive directory now
+            var LogArchivesLocated = Directory.GetFiles(LogArchivePath, "*.zip*", SearchOption.AllDirectories);
+            if (ArchiveNameFilter != "")
+            {
+                Logger?.WriteLog($"ARCHIVE FILTERING BY NAME IS IN EFFECT! FILTERING WITH {ArchiveNameFilter}", LogType.WarnLog);
+                LogArchivesLocated = LogArchivesLocated.Where(FileObj => FileObj.Contains(ArchiveNameFilter)).ToArray();
+            }
+            
+            // Log how many files are found
+            Logger?.WriteLog($"PULLED A TOTAL OF {LogArchivesLocated.Length} LOG ARCHIVE OBJECTS", LogType.InfoLog);
+            if (LogArchivesLocated.Length < ArchiveLimit)
+            {
+                // If less than the limit return out
+                Logger?.WriteLog($"NOT CLEANING OUT ARCHIVES SINCE OUR ARCHIVE COUNT IS LESS THAN OUR SPECIFIED VALUE OF {ArchiveLimit}", LogType.WarnLog);
+                return;
+            }
+
+            // Locate the archive sets to keep
+            var ArchiveSetsToKeep = LogArchivesLocated
+                .OrderBy(ArchiveObj => new FileInfo(ArchiveObj).LastWriteTime)
+                .Take(ArchiveLimit)
+                .ToArray();
+            var ArchiveSetsToRemove = LogArchivesLocated
+                .Where(ArchiveObj => !ArchiveSetsToKeep.Contains(ArchiveObj))
+                .ToArray();
+
+            // Now delete the ones we don't want to use.
+            Logger?.WriteLog($"REMOVING A TOTAL OF {ArchiveSetsToRemove.Length} ARCHIVE FILES NOW...", LogType.InfoLog);
+            Logger?.WriteLog("RUNNING REMOVAL OPERATION IN BACKGROUND TO KEEP MAIN THREADS ALIVE AND WELL!", LogType.WarnLog);
+
+            // Run this in a task so we don't hang up the whole main operation of the API
+            Task.Run(() =>
+            {
+                // Run loop on all file set objects
+                foreach (var LogArchiveSet in ArchiveSetsToRemove)
+                {
+                    // Log information
+                    Logger?.WriteLog($"REMOVING ARCHIVE OBJECT {LogArchiveSet} NOW...", LogType.TraceLog);
+
+                    // Try and remove the file. If failed log so
+                    try { File.Delete(LogArchivePath); }
+                    catch { Logger?.WriteLog($"FAILED TO REMOVE ARCHIVE SET: {LogArchiveSet}!! THIS IS WEIRD!", LogType.WarnLog); }
                 }
             });
         }
