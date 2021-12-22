@@ -15,6 +15,7 @@ The AIO Logger used in most of if not all of our projects
         "LogArchivePath": "C:\\Program Files (x86)\\MEAT Inc\\FulcrumShim\\FulcrumLogs\\FulcrumArchives",
         "ArchiveOnFileCount": 20,
         "ArchiveFileSetSize": 15,
+        "ArchiveCleanupFileCount": 50,
         "CompressionLevel": "Optimal",
         "CompressionStyle": "ZIP_COMPRESSION"
     }
