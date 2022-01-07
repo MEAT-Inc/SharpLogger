@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>SharpLogger</id>
-    <version>0.0.0.0</version>
+    <version>1.4.10.109</version>
     <title>SharpLogger</title>
     <authors>Zachary Walsh - MEAT Inc</authors>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
@@ -16,10 +16,12 @@
   - ` dotnet add PROJECT package SharpLogger --version LATEST `
 --- 
 ### Change Log For Release
-    </description>
-    <releaseNotes>RELEASE NOTES GO HERE</releaseNotes>
+--Built in some new changes to this nuspec file for including NLog as a proper requirement in projects which use this Nuget package
+</description>
+    <releaseNotes>--Built in some new changes to this nuspec file for including NLog as a proper requirement in projects which use this Nuget package
+</releaseNotes>
     <copyright>MEAT Inc (2021)</copyright>
-    <tags>0.0.0.0</tags>
+    <tags>1.4.10.109</tags>
     <dependencies>
       <group targetFramework=".NETFramework4.7.2">
         <dependency id="NLog" version="4.7.12"/>
