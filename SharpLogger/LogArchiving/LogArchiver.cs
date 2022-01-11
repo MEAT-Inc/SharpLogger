@@ -177,35 +177,46 @@ namespace SharpLogger.LogArchiving
                 .ToArray();
 
             // Build output ZIP
-            using (ArchiveBuilt = this.CreateArchive())
+            try
             {
-                // Append all e`ntries now.
-                foreach (var LogFileInfo in FileInfoSet)
+                using (ArchiveBuilt = this.CreateArchive())
                 {
-                    try
+                    // Append all e`ntries now.
+                    foreach (var LogFileInfo in FileInfoSet)
                     {
-                        // Get name of file and use it for entry contents.
-                        string FullPath = LogFileInfo.FullName;
-                        string NameOnly = Path.GetFileName(LogFileInfo.Name);
-                        ArchiveBuilt.CreateEntryFromFile(FullPath, NameOnly, CompressionLevel.Optimal);
+                        try
+                        {
+                            // Get name of file and use it for entry contents.
+                            string FullPath = LogFileInfo.FullName;
+                            string NameOnly = Path.GetFileName(LogFileInfo.Name);
+                            ArchiveBuilt.CreateEntryFromFile(FullPath, NameOnly, CompressionLevel.Optimal);
 
-                        // Add to entry and update progress
-                        this.OnFileAddedToArchive(new ArchiveProgressEventArgs(FullPath, this));
+                            // Add to entry and update progress
+                            this.OnFileAddedToArchive(new ArchiveProgressEventArgs(FullPath, this));
+                        }
+                        catch (Exception Ex) { this.OnFileOperationFailure(new ArchiveProgressEventArgs(LogFileInfo.FullName, this), Ex); }
+
+                        // Remove the old base file now.
+                        try { File.Delete(LogFileInfo.FullName); }
+                        catch { WriteLogEntry($"FAILED TO DELETE INPUT LOG FILE {LogFileInfo.Name}!", LogType.WarnLog); }
                     }
-                    catch (Exception Ex) { this.OnFileOperationFailure(new ArchiveProgressEventArgs(LogFileInfo.FullName, this), Ex); }
-
-                    // Remove the old base file now.
-                    try { File.Delete(LogFileInfo.FullName); }
-                    catch { WriteLogEntry($"FAILED TO DELETE INPUT LOG FILE {LogFileInfo.Name}!", LogType.WarnLog); }
                 }
+
+                // Send out a new archive done event
+                this.OnArchiveCompleted(new ArchiveProgressEventArgs(this.OutputFileName, this));
+
+                // Store archive object Remove the Temp Directory and then remove the original log files.
+                this.ArchiveObject = ArchiveBuilt;
+                return true;
             }
-
-            // Send out a new archive done event
-            this.OnArchiveCompleted(new ArchiveProgressEventArgs(this.OutputFileName, this));
-
-            // Store archive object Remove the Temp Directory and then remove the original log files.
-            this.ArchiveObject = ArchiveBuilt;
-            return true;
+            catch (Exception Ex)
+            {
+                // Log Archive creation failed and return.
+                Logger?.WriteLog("FAILED TO BUILD NEW ZIP ARCHIVE! THIS IS A REAL WHAT THE FUCK MONENT", LogType.ErrorLog);
+                Logger?.WriteLog("ERROR IS BEING LOGGED BELOW", Ex);
+                ArchiveBuilt = null;
+                return false;   
+            }
         }
     }
 }
