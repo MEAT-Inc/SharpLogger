@@ -22,7 +22,7 @@ namespace SharpLogger.LoggerObjects
 
         // Async Target object
         private int _logOutputCount = 0;                    // Counter for how many iterations of write were called
-        private readonly int _forceFlushValue = 50;         // Force flush operations when the number of writes is this value   
+        private static int _forceFlushValue = 50;           // Force flush operations when the number of writes is this value   
         public readonly AsyncTargetWrapper WrapperBuilt;    // Target object itself
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -71,6 +71,23 @@ namespace SharpLogger.LoggerObjects
             this.PrintLoggerInfos();
         }
 
+        // ---------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Stores a new flush trigger value onto our instances for async targets
+        /// </summary>
+        /// <param name="FlushTrigger">Value to set for our flush routines</param>
+        public static void SetFlushTrigger(int FlushTrigger)
+        {
+            // Find our main logger
+            LogBroker.Logger?.WriteLog("[ASYNC SETUP] ::: SETTING NEW ASYNC TARGET FLUSH TRIGGER VALUE!", LogType.InfoLog);
+            LogBroker.Logger?.WriteLog($"[ASYNC SETUP] ::: CURRENT FLUSH VALUE:   {_forceFlushValue}");
+            LogBroker.Logger?.WriteLog($"[ASYNC SETUP] ::: NEWLY SET FLUSH VALUE: {FlushTrigger}");
+
+            // Store the value here
+            _forceFlushValue = FlushTrigger;
+        }
+
         /// <summary>
         /// Overrides our default write operation to include a flush at the end of our writing.
         /// </summary>
@@ -80,6 +97,37 @@ namespace SharpLogger.LoggerObjects
         {
             // Write base value log output and then flush our writer
             base.WriteLog(LogMessage, Level); this._logOutputCount += 1;
+
+            // Check for our output counter value. If matched, flush output
+            if (this._logOutputCount != _forceFlushValue) return;
+            this.WrapperBuilt.Flush(FlushEx => base.WriteLog("[ASYNC LOGGER] ::: ASYNC FLUSH EXCEPTION", FlushEx));
+            this._logOutputCount = 0;
+        }
+        /// <summary>
+        /// Overrides our default write operation to include a flush at the end of our writing.
+        /// </summary>
+        /// <param name="MessageExInfo"></param>
+        /// <param name="Ex"></param>
+        /// <param name="LevelTypes"></param>
+        public override void WriteLog(string MessageExInfo, Exception Ex, LogType[] LevelTypes = null)
+        {
+            // Write base value log output and then flush our writer
+            base.WriteLog(MessageExInfo, Ex, LevelTypes); this._logOutputCount += 1;
+
+            // Check for our output counter value. If matched, flush output
+            if (this._logOutputCount != _forceFlushValue) return;
+            this.WrapperBuilt.Flush(FlushEx => base.WriteLog("[ASYNC LOGGER] ::: ASYNC FLUSH EXCEPTION", FlushEx));
+            this._logOutputCount = 0;
+        }
+        /// <summary>
+        /// Overrides default write operation to include a flush at the end of our writing
+        /// </summary>
+        /// <param name="Ex"></param>
+        /// <param name="Level"></param>
+        public override void WriteLog(Exception Ex, LogType Level = LogType.ErrorLog)
+        {
+            // Write base value log output and then flush our writer
+            base.WriteLog(Ex, Level); this._logOutputCount += 1;
 
             // Check for our output counter value. If matched, flush output
             if (this._logOutputCount != _forceFlushValue) return;
