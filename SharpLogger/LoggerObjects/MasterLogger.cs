@@ -20,7 +20,7 @@ namespace SharpLogger.LoggerObjects
         /// <param name="LogFileName"></param>
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
-        public MasterLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5) :
+        public MasterLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) :
             base(LoggerActions.MasterLogger, LoggerName, MinLevel, MaxLevel)
         {
             // Check file name.
@@ -52,6 +52,7 @@ namespace SharpLogger.LoggerObjects
             // Store config
             LogManager.Configuration = this.LoggingConfig;
             this.NLogger = LogManager.GetCurrentClassLogger();
+            this.PrintLoggerInfos();
         }
     }
 }

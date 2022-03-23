@@ -219,9 +219,7 @@ namespace SharpLogger
         {
             // DO NOT RUN THIS MORE THAN ONCE!
             if (Logger != null) { return; }
-
-            // Make a new NLogger Config
-            if (LogManager.Configuration == null) LogManager.Configuration = new LoggingConfiguration();
+            LogManager.Configuration ??= new LoggingConfiguration();
 
             // Build logger object now.
             MainLogFileName = Path.Combine(BaseOutputPath, $"{AppInstanceName}_Logging_{DateTime.Now.ToString("MMddyyy-HHmmss")}.log");
@@ -241,6 +239,33 @@ namespace SharpLogger
             Logger.WriteLog($"--> TIME OF DLL INIT: {DateTime.Now.ToString("g")}", LogType.InfoLog);
             Logger.WriteLog($"--> DLL ASSEMBLY VER: {AssyVersion}", LogType.InfoLog);
             Logger.WriteLog($"--> HAPPY LOGGING. LETS HOPE EVERYTHING GOES WELL...", LogType.InfoLog);
+        }
+
+        /// <summary>
+        /// Flushes out the contents of our Async logger objects on the logger queue
+        /// </summary>
+        public void FlushAllAsyncTargets()
+        {
+            // Log pulling in loggers now
+            Logger?.WriteLog("[ASYNC_FLUSH] ::: LOOKING FOR ASYNC LOGGER OBJECTS TO FLUSH NOW...", LogType.InfoLog);
+            var AsyncLoggers = LoggerQueue.GetLoggers(LoggerActions.SubServiceLogger)
+                .Select(LoggerObj => LoggerObj as SubServiceLogger)
+                .Where(LoggerCast => LoggerCast?.WrapperBuilt != null)
+                .ToList();
+
+            // Check if our loggers exist or not.
+            if (AsyncLoggers.Count == 0) {
+                Logger?.WriteLog("[ASYNC_FLUSH] ::: NOT CLEARING OUT CONTENT FOR ASYNC TARGETS SINCE NONE WERE LOCATED!", LogType.WarnLog);
+                return;
+            }
+
+            // Now clear out each target with a flush routine.
+            foreach (var LoggerObj in AsyncLoggers)
+            {
+                // Flush output and log information out here
+                Logger?.WriteLog($"[ASYNC_FLUSH][{LoggerObj.LoggerName}] ::: FLUSHING OUTPUT NOW...", LogType.InfoLog);
+                LoggerObj.WrapperBuilt.Flush(FlushEx => Logger?.WriteLog("[ASYNC_LOG] ::: ", FlushEx));
+            }
         }
     }
 }

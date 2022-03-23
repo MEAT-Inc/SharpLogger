@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using NLog;
 using NLog.Config;
+using NLog.Targets.Wrappers;
 using SharpLogger.LoggerSupport;
 
 namespace SharpLogger.LoggerObjects
@@ -26,13 +27,19 @@ namespace SharpLogger.LoggerObjects
         public LoggerActions LoggerType;    // Type of logger
 
         // NLog objects
-        protected Logger NLogger;                         // NLog object
-        protected LoggingConfiguration LoggingConfig;     // Logging config item
-
-        // Log Level Info (0 is Trace, 6 Is Off)
-        internal bool DisableLogging = false;             // Toggle to turn logging on or off.
-        internal LogLevel MinLevel = LogLevel.Trace;      // Lowest level
-        internal LogLevel MaxLevel = LogLevel.Fatal;      // Top most level
+        protected Logger NLogger;                              // NLog object
+        protected LoggingConfiguration LoggingConfig;          // Logging config item
+                                                               
+        // Log Level Info (0 is Trace, 6 Is Off)               
+        internal bool DisableLogging = false;                  // Toggle to turn logging on or off.
+        internal LogLevel MinLevel = LogLevel.Trace;           // Lowest level
+        internal LogLevel MaxLevel = LogLevel.Fatal;           // Top most level
+                                                               
+        // Async Target object properties                      
+        protected bool _isAsync;                               // Main bool to sef it we're async or not.
+        protected int _logOutputCount = 0;                     // Counter for how many iterations of write were called
+        protected static int _forceFlushValue = 50;            // Force flush operations when the number of writes is this value   
+        protected internal AsyncTargetWrapper WrapperBuilt;    // Target object itself
 
         // ---------------------------------------------------------------------------------------
 
@@ -59,6 +66,24 @@ namespace SharpLogger.LoggerObjects
             LogBroker.LoggerQueue.AddLoggerToPool(this);
         }
 
+        // -------------------------------------- ASYNC CONFIGURATIONS -----------------------------
+
+        /// <summary>
+        /// Stores a new flush trigger value onto our instances for async targets
+        /// </summary>
+        /// <param name="FlushTrigger">Value to set for our flush routines</param>
+        public static void SetFlushTrigger(int FlushTrigger)
+        {
+            // Find our main logger
+            LogBroker.Logger?.WriteLog("[ASYNC_SETUP] ::: SETTING NEW ASYNC TARGET FLUSH TRIGGER VALUE!", LogType.InfoLog);
+            LogBroker.Logger?.WriteLog($"[ASYNC_SETUP] ::: CURRENT FLUSH VALUE:   {_forceFlushValue}");
+            LogBroker.Logger?.WriteLog($"[ASYNC_SETUP] ::: NEWLY SET FLUSH VALUE: {FlushTrigger}");
+
+            // Store the value here
+            _forceFlushValue = FlushTrigger; if (FlushTrigger > 0) return;
+            LogBroker.Logger?.WriteLog("[ASYNC_SETUP] ::: NEGATIVE REFRESH INTERVAL HAS BEEN PROCESSED! NOT USING FORCE TRIGGER TO FLUSH!", LogType.WarnLog);
+        }
+
         // -------------------------------------- LOG WRITING ACTIONS -----------------------------
 
         /// <summary>
@@ -75,8 +100,9 @@ namespace SharpLogger.LoggerObjects
             MappedDiagnosticsContext.Set("calling-class-short", 
                 ClassName.Contains('.') ? ClassName.Split('.').Last() : ClassName);
 
-            // Write vaule
+            // Write value and flush outputs
             this.NLogger.Log(Level.ToNLevel(), LogMessage);
+            this.FlushAsyncLogger();
         }
         /// <summary>
         /// Writes an exceptions contents out to the logger
@@ -98,13 +124,16 @@ namespace SharpLogger.LoggerObjects
             this.NLogger.Log(Level.ToNLevel(), $"Ex Target  {Ex.TargetSite.Name}");
             
             // Write the Ex Stack trace
-            if (Ex.StackTrace == null) { return; }
+            if (Ex.StackTrace == null) { this.FlushAsyncLogger(); return; }
             this.NLogger.Log(Level.ToNLevel(), $"Ex Stack\n{Ex.StackTrace}");
 
             // If our inner exception is not null, run it through this logger.
-            if (Ex.InnerException == null) return;
+            if (Ex.InnerException == null) { this.FlushAsyncLogger(); return; }
             this.NLogger.Log(Level.ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
             this.WriteLog(Ex.InnerException, Level);
+
+            // Flush outputs for Async targets
+            this.FlushAsyncLogger();
         }
         /// <summary>
         /// Writes an exception object out.
@@ -140,9 +169,26 @@ namespace SharpLogger.LoggerObjects
             else { this.NLogger.Log(LevelTypes[1].ToNLevel(), $"\tEX STACK\n{Ex.StackTrace.Replace("\n", "\n\t")}"); }
 
             // If our inner exception is not null, run it through this logger.
-            if (Ex.InnerException == null) return;
+            if (Ex.InnerException == null) { this.FlushAsyncLogger(); return; }
             this.NLogger.Log(LevelTypes[1].ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW"); 
             this.WriteLog(MessageExInfo, Ex.InnerException, LevelTypes);
+
+            // Flush outputs for Async targets
+            this.FlushAsyncLogger();
+        }
+
+        /// <summary>
+        /// Forces the async targets to flush their output when called
+        /// </summary>
+        private void FlushAsyncLogger()
+        {
+            // Make sure we're actually async here and tick our counter
+            this._logOutputCount += 1;
+            if (!this._isAsync) return;
+
+            // Reset the counter, flush output
+            if (_forceFlushValue > 0 && (this._logOutputCount != _forceFlushValue)) return; this._logOutputCount = 0;
+            this.WrapperBuilt.Flush(FlushEx => this.WriteLog("[ASYNC_LOG] ::: ", FlushEx));
         }
 
         // --------------------------------- BASE CONFIG METHODS AND INFO --------------------------
