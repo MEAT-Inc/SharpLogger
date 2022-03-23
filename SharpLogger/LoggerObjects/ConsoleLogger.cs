@@ -15,21 +15,25 @@ namespace SharpLogger.LoggerObjects
         /// <param name="LoggerName"></param>
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
-        public ConsoleLogger([CallerMemberName] string LoggerName = "", int MinLevel = 0, int MaxLevel = 5) : base(LoggerActions.ConsoleLogger, LoggerName, MinLevel, MaxLevel)
+        public ConsoleLogger([CallerMemberName] string LoggerName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) : base(LoggerActions.ConsoleLogger, LoggerName, MinLevel, MaxLevel)
         {
-            // Add the logging rule here.
+            // Build target object and check for Async use cases
+            this._isAsync = UseAsync;
+            var ConsoleTarget = LoggerConfiguration.GenerateConsoleLogger(LoggerName);
+            if (this._isAsync) this.WrapperBuilt = LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
+
+            // Build Logger object now.
             this.LoggingConfig = LogManager.Configuration;
             this.LoggingConfig.AddRule(
                 LogLevel.FromOrdinal(MinLevel),
-                LogLevel.FromOrdinal(MaxLevel), 
-                WatchdogLoggerConfiguration.GenerateConsoleLogger(LoggerName));
+                LogLevel.FromOrdinal(MaxLevel),
+                this._isAsync ? WrapperBuilt : ConsoleTarget, LoggerName, false
+            );
 
-            // Store configuration
+            // Store configuration and print updated logger information
             LogManager.Configuration = this.LoggingConfig;
             this.NLogger = LogManager.GetCurrentClassLogger();
             this.PrintLoggerInfos();
         }
-
-        // ----------------------------------------------------------------------------------------------------------------
     }
 }

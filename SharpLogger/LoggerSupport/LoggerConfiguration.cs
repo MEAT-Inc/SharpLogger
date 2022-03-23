@@ -1,9 +1,12 @@
-﻿using NLog.Layouts;
+﻿using NLog;
+using NLog.Config;
+using NLog.Layouts;
 using NLog.Targets;
+using NLog.Targets.Wrappers;
 
 namespace SharpLogger.LoggerSupport
 {
-    internal static class WatchdogLoggerConfiguration
+    internal static class LoggerConfiguration
     {
         // Configuration Strings
         public static string BaseFormatConsole =
@@ -123,6 +126,26 @@ namespace SharpLogger.LoggerSupport
 
             // Return the logger
             return DatabaseLogger;
+        }
+
+
+        /// <summary>
+        /// Used to build a new logger object with builtin Async operations from the start.
+        /// </summary>
+        public static AsyncTargetWrapper ConvertToAsyncTarget(Target TargetToConvert, int MinLogLevel = 0)
+        {
+            // Build the wrapper object and convert our input target
+            AsyncTargetWrapper AsyncWrapper = new AsyncTargetWrapper();
+
+            // Configure properties of the async target object.
+            AsyncWrapper.QueueLimit = 5000;
+            AsyncWrapper.WrappedTarget = TargetToConvert;
+            AsyncWrapper.OverflowAction = AsyncTargetWrapperOverflowAction.Grow;
+
+            // Return the built target object.
+            var LogLevelParsed = LogLevel.FromOrdinal(MinLogLevel);
+            SimpleConfigurator.ConfigureForTargetLogging(AsyncWrapper, LogLevelParsed);
+            return AsyncWrapper;
         }
 
         // ----------------------------------------------------------------------------------------------

@@ -22,14 +22,11 @@ namespace SharpLogger.LoggerSupport
     /// </summary>
     public enum  LoggerActions : int
     {
-        MasterLogger,     // Master logging object.
-        FileLogger,       // Logger built for file output
-        ConsoleLogger,    // Logger made to time operations
-        SubServiceLogger, // Logger which logs to file for all output and to console on error and up
-
-        EternalLogger,    // Logger which never goes away.
-        TimerLogger,      // Logger which goes away when an end logging call is made.
-        MethodLogger,     // Logger which goes away once a method is done being executed.
+        // Main Logger Types
+        MasterLogger,           // Master logging object.
+        FileLogger,             // Logger built for file output
+        ConsoleLogger,          // Logger made to time operations
+        SubServiceLogger,       // Logger which logs to file for all output and to console on error and up
     }
 
 

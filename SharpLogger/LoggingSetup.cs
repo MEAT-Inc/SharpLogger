@@ -62,9 +62,6 @@ namespace SharpLogger
 
             // Run cleanup for the main app files and the DLL Log files
             LogBroker.CleanupLogHistory(ConfigObj.ToString());
-            LogBroker.CleanupLogHistory(ConfigObj.ToString(), "FulcrumShim");
-
-            // Log done.
             LogBroker.Logger?.WriteLog($"DONE CLEANING UP LOG FILES! CHECK {ConfigObj.LogArchivePath} FOR NEWLY BUILT ARCHIVE FILES", LogType.InfoLog);
         }
     }
