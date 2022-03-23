@@ -22,7 +22,7 @@ namespace SharpLogger.LoggerObjects
             this.LoggingConfig.AddRule(
                 LogLevel.FromOrdinal(MinLevel),
                 LogLevel.FromOrdinal(MaxLevel), 
-                WatchdogLoggerConfiguration.GenerateConsoleLogger(LoggerName));
+                LoggerConfiguration.GenerateConsoleLogger(LoggerName));
 
             // Store configuration
             LogManager.Configuration = this.LoggingConfig;

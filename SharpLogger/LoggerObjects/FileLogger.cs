@@ -51,7 +51,7 @@ namespace SharpLogger.LoggerObjects
             this.LoggingConfig.AddRule(
                 LogLevel.FromOrdinal(MinLevel),
                 LogLevel.FromOrdinal(MaxLevel),
-                WatchdogLoggerConfiguration.GenerateFileLogger(this.LoggerFile));
+                LoggerConfiguration.GenerateFileLogger(this.LoggerFile));
 
             // Store configuration
             LogManager.Configuration = this.LoggingConfig;
