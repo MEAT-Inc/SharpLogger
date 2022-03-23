@@ -27,7 +27,7 @@ namespace SharpLogger.LoggerObjects
         /// <param name="LoggerName"></param>
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
-        public AsyncSubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5) : base(LoggerActions.AsyncServiceLogger, LoggerName, MinLevel, MaxLevel)
+        public AsyncSubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5) : base(LoggerActions.AsyncSubServiceLogger, LoggerName, MinLevel, MaxLevel)
         {
             // Store path and file name here.
             if (!string.IsNullOrEmpty(LogFileName))
