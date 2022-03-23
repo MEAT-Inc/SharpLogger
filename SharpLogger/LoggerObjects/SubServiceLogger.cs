@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using NLog;
+using NLog.Config;
+using NLog.Targets.Wrappers;
 using SharpLogger.LoggerSupport;
 
 namespace SharpLogger.LoggerObjects
@@ -24,7 +26,8 @@ namespace SharpLogger.LoggerObjects
         /// <param name="LoggerName"></param>
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
-        public SubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5) : base(LoggerActions.SubServiceLogger, LoggerName, MinLevel, MaxLevel)
+        /// <param name="UseAsync"></param>
+        public SubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) : base(LoggerActions.SubServiceLogger, LoggerName, MinLevel, MaxLevel)
         {
             // Store path and file name here.
             if (!string.IsNullOrEmpty(LogFileName))
@@ -44,12 +47,18 @@ namespace SharpLogger.LoggerObjects
                 );
             }
 
+            // Build target object and check for Async use cases
+            this._isAsync = UseAsync;
+            var ConsoleTarget = LoggerConfiguration.GenerateConsoleLogger(LoggerName);
+            if (this._isAsync) this.WrapperBuilt = LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
+
             // Build Logger object now.
             this.LoggingConfig = LogManager.Configuration;
             this.LoggingConfig.AddRule(
-                LogLevel.Warn,
-                LogLevel.Fatal,
-                LoggerConfiguration.GenerateConsoleLogger(LoggerName), LoggerName, false);
+                LogLevel.FromOrdinal(MinLevel), 
+                LogLevel.FromOrdinal(MaxLevel),
+                this._isAsync ? WrapperBuilt : ConsoleTarget, LoggerName, false
+            );
 
             // Store configuration
             LogManager.Configuration = this.LoggingConfig;

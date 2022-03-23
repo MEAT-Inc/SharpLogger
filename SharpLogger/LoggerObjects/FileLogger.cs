@@ -21,7 +21,7 @@ namespace SharpLogger.LoggerObjects
         /// <param name="LoggerName"></param>
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
-        public FileLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5) : base(LoggerActions.FileLogger, LoggerName, MinLevel, MaxLevel)
+        public FileLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) : base(LoggerActions.FileLogger, LoggerName, MinLevel, MaxLevel)
         {
             // Store path and file name here.
             if (!string.IsNullOrEmpty(LogFileName))
@@ -46,19 +46,26 @@ namespace SharpLogger.LoggerObjects
                 }
             }
 
+            // Build target object and check for Async use cases
+            this._isAsync = UseAsync;
+            var ConsoleTarget = LoggerConfiguration.GenerateConsoleLogger(LoggerName);
+            if (this._isAsync) this.WrapperBuilt = LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
+
             // Build Logger object now.
             this.LoggingConfig = LogManager.Configuration;
             this.LoggingConfig.AddRule(
                 LogLevel.FromOrdinal(MinLevel),
                 LogLevel.FromOrdinal(MaxLevel),
-                LoggerConfiguration.GenerateFileLogger(this.LoggerFile));
+                this._isAsync ? WrapperBuilt : ConsoleTarget, LoggerName, false
+            );
 
-            // Store configuration
+            // Store configuration and print updated logger information
             LogManager.Configuration = this.LoggingConfig;
             this.NLogger = LogManager.GetCurrentClassLogger();
             this.PrintLoggerInfos();
         }
 
+        // ---------------------------------------------------------------------------------------------------------------
 
         /// <summary>
         /// Writes all the logger info out to the current file.
@@ -69,8 +76,8 @@ namespace SharpLogger.LoggerObjects
         public override void PrintLoggerInfos(LogType LogType = LogType.DebugLog)
         {
             base.PrintLoggerInfos();
-            this.NLogger.Log(LogType.ToNLevel(), $"--> LOGGER FILE:   {new FileInfo(this.LoggerFile).Name}");
-            this.NLogger.Log(LogType.ToNLevel(), $"--> LOGGER PATH:   {this.OutputPath}");
+            this.NLogger.Log(LogType.ToNLevel(), $"--> LOGGER FILE:  {new FileInfo(this.LoggerFile).Name}");
+            this.NLogger.Log(LogType.ToNLevel(), $"--> LOGGER PATH:  {this.OutputPath}");
         }
     }
 }

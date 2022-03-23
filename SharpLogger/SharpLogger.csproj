@@ -56,7 +56,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="LogBroker.cs" />
-    <Compile Include="LoggerObjects\AsyncSubServiceLogger.cs" />
     <Compile Include="LoggingSetup.cs" />
     <Compile Include="LogArchiving\LogArchiveConfiguration.cs" />
     <Compile Include="LogArchiving\LogArchiveEvents.cs" />
@@ -66,7 +65,6 @@
     <Compile Include="LoggerObjects\FileLogger.cs" />
     <Compile Include="LoggerObjects\MasterLogger.cs" />
     <Compile Include="LoggerObjects\SubServiceLogger.cs" />
-    <Compile Include="LoggerObjects\TimerLogger.cs" />
     <Compile Include="LoggerQueue.cs" />
     <Compile Include="LoggerSupport\LoggerConfiguration.cs" />
     <Compile Include="LoggerSupport\LoggerEnums.cs" />
