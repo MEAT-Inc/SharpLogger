@@ -135,9 +135,18 @@ namespace SharpLogger
                     ZipArchive OutputArchive;
                     Logger?.WriteLog($"[{ArchiveName}] --> COMPRESSION FOR FILE SET STARTING NOW...", LogType.TraceLog);
 
-                    // Write entries for the files into the archiver now.
-                    if (ArchiveBuilder.CompressFiles(out OutputArchive)) Logger?.WriteLog($"[{ArchiveName}] --> GENERATED NEW ZIP FILE OK!", LogType.InfoLog);
-                    else Logger?.WriteLog($"[{ArchiveName}] --> FAILED TO WRITE LOG ENTRIES FOR ARCHIVE SET!", LogType.ErrorLog);
+                    try
+                    {
+                        // Write entries for the files into the archiver now.
+                        if (ArchiveBuilder.CompressFiles(out OutputArchive)) Logger?.WriteLog($"[{ArchiveName}] --> GENERATED NEW ZIP FILE OK!", LogType.InfoLog);
+                        else Logger?.WriteLog($"[{ArchiveName}] --> FAILED TO WRITE LOG ENTRIES FOR ARCHIVE SET!", LogType.ErrorLog);
+                    }
+                    catch (Exception CompressEx)
+                    {
+                        // Log failure out
+                        Logger?.WriteLog($"FAILED TO COMPRESS ARCHIVE {ArchiveName}!", LogType.ErrorLog);
+                        Logger?.WriteLog("EXCEPTION THROWN DURING COMPRESSION!", CompressEx);
+                    }
                 }
 
                 // Now once done, configure the logging archive cleanup process
@@ -177,8 +186,7 @@ namespace SharpLogger
             // Locate the archive sets to keep
             var ArchiveSetsToKeep = LogArchivesLocated
                 .OrderBy(ArchiveObj => new FileInfo(ArchiveObj).LastWriteTime)
-                .Take(ArchiveLimit)
-                .ToArray();
+                .Reverse().Take(ArchiveLimit).ToArray();
             var ArchiveSetsToRemove = LogArchivesLocated
                 .Where(ArchiveObj => !ArchiveSetsToKeep.Contains(ArchiveObj))
                 .ToArray();
@@ -197,7 +205,7 @@ namespace SharpLogger
                     Logger?.WriteLog($"REMOVING ARCHIVE OBJECT {LogArchiveSet} NOW...", LogType.TraceLog);
 
                     // Try and remove the file. If failed log so
-                    try { File.Delete(LogArchivePath); }
+                    try { File.Delete(LogArchiveSet); }
                     catch { Logger?.WriteLog($"FAILED TO REMOVE ARCHIVE SET: {LogArchiveSet}!! THIS IS WEIRD!", LogType.WarnLog); }
                 }
             });

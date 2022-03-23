@@ -66,14 +66,14 @@ namespace SharpLogger.LoggerObjects
             this.LoggingConfig.AddRule(
                 LogLevel.Trace,
                 LogLevel.Fatal,
-                WatchdogLoggerConfiguration.GenerateConsoleLogger(LoggerName, WatchdogLoggerConfiguration.TimedFormatConsole),
+                LoggerConfiguration.GenerateConsoleLogger(LoggerName, LoggerConfiguration.TimedFormatConsole),
                 LoggerName,
                 false
             );
             this.LoggingConfig.AddRule(
                 LogLevel.Trace,
                 LogLevel.Fatal,
-                WatchdogLoggerConfiguration.GenerateFileLogger(LoggerName, WatchdogLoggerConfiguration.TimedFormatFile),
+                LoggerConfiguration.GenerateFileLogger(LoggerName, LoggerConfiguration.TimedFormatFile),
                 LoggerName,
                 false
             );

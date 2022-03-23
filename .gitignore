@@ -389,5 +389,5 @@ FodyWeavers.xsd
 FalconMainAPI/SwaggerDocGenerator/_secrets.js
 
 # Nuget Package Folder
-SharpSimulatorNuget/NupkgConfig
+**/SharpLoggerNuget/
 

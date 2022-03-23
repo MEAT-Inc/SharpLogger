@@ -1,16 +1,19 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 using NLog;
 using SharpLogger.LoggerSupport;
 
 namespace SharpLogger.LoggerObjects
 {
     /// <summary>
-    /// Service logger. Basic logger object output
+    /// Async task wrapped logger for async output operations.
     /// </summary>
-    public class SubServiceLogger : BaseLogger
+    public class AsyncSubServiceLogger : BaseLogger
     {
         // File Paths for logger
         public string LoggerFile;           // Path of the logger file.
@@ -24,7 +27,7 @@ namespace SharpLogger.LoggerObjects
         /// <param name="LoggerName"></param>
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
-        public SubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5) : base(LoggerActions.SubServiceLogger, LoggerName, MinLevel, MaxLevel)
+        public AsyncSubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5) : base(LoggerActions.AsyncServiceLogger, LoggerName, MinLevel, MaxLevel)
         {
             // Store path and file name here.
             if (!string.IsNullOrEmpty(LogFileName))
@@ -44,16 +47,21 @@ namespace SharpLogger.LoggerObjects
                 );
             }
 
+
+            // Convert to an Async wrapper for our target if specified
+            var ConsoleTarget = LoggerConfiguration.GenerateConsoleLogger(LoggerName);
+            LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
+
             // Build Logger object now.
             this.LoggingConfig = LogManager.Configuration;
             this.LoggingConfig.AddRule(
-                LogLevel.Warn,
-                LogLevel.Fatal,
-                LoggerConfiguration.GenerateConsoleLogger(LoggerName), LoggerName, false);
+                LogLevel.Warn, LogLevel.Fatal,
+                ConsoleTarget, LoggerName, false
+            );
 
             // Store configuration
             LogManager.Configuration = this.LoggingConfig;
-            this.NLogger = LogManager.GetCurrentClassLogger();
+            this.NLogger = LogManager.GetLogger(LoggerName);
             this.PrintLoggerInfos();
         }
     }
