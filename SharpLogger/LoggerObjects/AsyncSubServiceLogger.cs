@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using NLog;
+using NLog.Targets.Wrappers;
 using SharpLogger.LoggerSupport;
 
 namespace SharpLogger.LoggerObjects
@@ -18,6 +19,11 @@ namespace SharpLogger.LoggerObjects
         // File Paths for logger
         public string LoggerFile;           // Path of the logger file.
         public string OutputPath;           // Base output path.
+
+        // Async Target object
+        private int _logOutputCount = 0;                    // Counter for how many iterations of write were called
+        private readonly int _forceFlushValue = 50;         // Force flush operations when the number of writes is this value   
+        public readonly AsyncTargetWrapper WrapperBuilt;    // Target object itself
 
         // ---------------------------------------------------------------------------------------------------------------
 
@@ -50,7 +56,7 @@ namespace SharpLogger.LoggerObjects
 
             // Convert to an Async wrapper for our target if specified
             var ConsoleTarget = LoggerConfiguration.GenerateConsoleLogger(LoggerName);
-            LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
+            this.WrapperBuilt = LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
 
             // Build Logger object now.
             this.LoggingConfig = LogManager.Configuration;
@@ -63,6 +69,22 @@ namespace SharpLogger.LoggerObjects
             LogManager.Configuration = this.LoggingConfig;
             this.NLogger = LogManager.GetLogger(LoggerName);
             this.PrintLoggerInfos();
+        }
+
+        /// <summary>
+        /// Overrides our default write operation to include a flush at the end of our writing.
+        /// </summary>
+        /// <param name="LogMessage"></param>
+        /// <param name="Level"></param>
+        public override void WriteLog(string LogMessage, LogType Level = LogType.DebugLog)
+        {
+            // Write base value log output and then flush our writer
+            base.WriteLog(LogMessage, Level); this._logOutputCount += 1;
+
+            // Check for our output counter value. If matched, flush output
+            if (this._logOutputCount != _forceFlushValue) return;
+            this.WrapperBuilt.Flush(FlushEx => base.WriteLog("[ASYNC LOGGER] ::: ASYNC FLUSH EXCEPTION", FlushEx));
+            this._logOutputCount = 0;
         }
     }
 }
