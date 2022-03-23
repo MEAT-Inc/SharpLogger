@@ -27,7 +27,7 @@ namespace SharpLogger.LoggerSupport
         FileLogger,             // Logger built for file output
         ConsoleLogger,          // Logger made to time operations
         SubServiceLogger,       // Logger which logs to file for all output and to console on error and up
-        AsyncServiceLogger,     // Async supported logger identical to subservice but includes a queue. 
+        AsyncSubServiceLogger,  // Async supported logger identical to subservice but includes a queue. 
 
         // Special Loggers
         EternalLogger,          // Logger which never goes away.
