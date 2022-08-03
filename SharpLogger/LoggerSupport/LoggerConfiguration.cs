@@ -96,38 +96,6 @@ namespace SharpLogger.LoggerSupport
             // Return the logger
             return FileLogger;
         }
-        /// <summary>
-        /// Generate Database Logger Object
-        /// </summary>
-        /// <returns>Database logging object.</returns>
-        public static DatabaseTarget GenerateDatabaseLogger(string ConnectionString, string DatabaseName)
-        {
-            // Build the SQL Logger
-            var DatabaseLogger = new DatabaseTarget("ERSDatabaseLogger");
-            DatabaseLogger.DBProvider = "System.Data.SqlClient";
-            DatabaseLogger.ConnectionString = ConnectionString;
-            DatabaseLogger.CommandText =
-                @"INSERT INTO dbo.LOGGING_DB 
-                    (Time, DeviceId, YMM, VIN, SessionId, LogLevel, CallSite, Message, Exception) 
-                     values 
-                    (@Time, @DeviceId, @YMM, @VIN, @SessionId, @LogLevel, @CallSite, @Message, @Exception);"
-                .Replace("LOGGING_DB", DatabaseName);
-
-            // Add DB Params here
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@Time", Layout.FromString("${date:format=yyyy\\-MM\\-dd HH\\:mm\\:ss.fff}")));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@DeviceId", "${machinename}"));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@YMM", "${gdc:YearMakeModel}"));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@VIN", "${gdc:VIN}"));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@SessionId", "${gdc:SessionId}"));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@LogLevel", "${level}"));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@Callsite", "${gdc:CallingName}"));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@Message", "${gdc:CleanMessage}"));
-            DatabaseLogger.Parameters.Add(new DatabaseParameterInfo("@Exception", "${exception:tostring}"));
-
-            // Return the logger
-            return DatabaseLogger;
-        }
-
 
         /// <summary>
         /// Used to build a new logger object with builtin Async operations from the start.
