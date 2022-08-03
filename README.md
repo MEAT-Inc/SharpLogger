@@ -62,7 +62,7 @@ The AIO Logger used in most of if not all of our projects
    ```XML
     <MEAT-Inc>
        <add key="Username" value="meatincreporting" />
-       <add key="ClearTextPassword" value="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" />
+       <add key="ClearTextPassword" value="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" />
     </MEAT-Inc>
     ```
  - Once added in, save this file and close it out. 
@@ -77,7 +77,7 @@ The AIO Logger used in most of if not all of our projects
               <packageSourceCredentials>
                   <MEAT-Inc>
                       <add key="Username" value="meatincreporting" />
-                      <add key="ClearTextPassword" value="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" />
+                      <add key="ClearTextPassword" value="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" />
                   </MEAT-Inc>
               </packageSourceCredentials>
               <packageRestore>
