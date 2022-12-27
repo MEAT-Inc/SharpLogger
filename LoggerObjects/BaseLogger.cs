@@ -62,7 +62,8 @@ namespace SharpLogger.LoggerObjects
             this.LoggerGuid = Guid.NewGuid();
             this.LoggerName = LoggerName + "_" + LoggerType.ToString();
 
-            // Add self to queue.
+            // Add self to queue and validate our NLogger has been built
+            this.NLogger = LogManager.GetCurrentClassLogger();
             LogBroker.LoggerQueue.AddLoggerToPool(this);
         }
 
