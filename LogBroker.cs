@@ -23,14 +23,13 @@ namespace SharpLogger
     {
         // Singleton instance configuration from the broker.
         private static LogBroker _brokerInstance;
-        public static LogBroker BrokerInstance => _brokerInstance ?? (_brokerInstance = new LogBroker());
+        public static LogBroker BrokerInstance => _brokerInstance ??= new LogBroker();
 
         // Logging infos.
         public static string MainLogFileName;
         public static string AppInstanceName;
         public static string BaseOutputPath;
         public static MasterLogger Logger;
-        public static WatchdogLoggerQueue LoggerQueue = new WatchdogLoggerQueue();
 
         // Init Done or not.
         public static LogType MinLevel;
@@ -41,7 +40,6 @@ namespace SharpLogger
         /// <summary>
         /// Builds a new ERS Object and generates the logger output object.
         /// </summary>
-        /// <param name="LoggerName"></param>
         private LogBroker()
         {
             // Setup App constants here.
