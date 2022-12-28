@@ -64,7 +64,7 @@ namespace SharpLogger.LoggerObjects
 
             // Add self to queue and validate our NLogger has been built
             this.NLogger = LogManager.GetCurrentClassLogger();
-            LogBroker.LoggerQueue.AddLoggerToPool(this);
+            LoggerQueue.AddLoggerToPool(this);
         }
 
         // -------------------------------------- ASYNC CONFIGURATIONS -----------------------------
