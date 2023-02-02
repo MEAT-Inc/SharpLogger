@@ -113,6 +113,7 @@ namespace SharpLogger.LoggerObjects
         public virtual void WriteLog(Exception Ex, LogType Level = LogType.ErrorLog)
         {
             // Set Context here and store
+            if (Ex == null) return;
             string ClassName = this.GetCallingClass();
             MappedDiagnosticsContext.Set("custom-name", this.LoggerName);
             MappedDiagnosticsContext.Set("calling-class", ClassName);
@@ -145,6 +146,7 @@ namespace SharpLogger.LoggerObjects
         public virtual void WriteLog(string MessageExInfo, Exception Ex, LogType[] LevelTypes = null)
         {
             // Check level count.
+            if (Ex == null) return;
             if (LevelTypes == null) { LevelTypes = new LogType[2] { LogType.ErrorLog, LogType.ErrorLog }; }
             if (LevelTypes.Length == 1) { LevelTypes = LevelTypes.Append(LevelTypes[0]).ToArray(); }
 
