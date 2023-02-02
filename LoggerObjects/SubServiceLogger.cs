@@ -61,7 +61,6 @@ namespace SharpLogger.LoggerObjects
             );
 
             // Store configuration
-            LogManager.Configuration = this.LoggingConfig;
             this.NLogger = LogManager.GetCurrentClassLogger();
             this.PrintLoggerInfos();
         }

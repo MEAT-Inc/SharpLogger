@@ -50,7 +50,6 @@ namespace SharpLogger.LoggerObjects
                 LoggerConfiguration.GenerateConsoleLogger(LoggerName));
 
             // Store config
-            LogManager.Configuration = this.LoggingConfig;
             this.NLogger = LogManager.GetCurrentClassLogger();
             this.PrintLoggerInfos();
         }
