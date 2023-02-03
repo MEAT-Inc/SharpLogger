@@ -90,8 +90,8 @@ namespace SharpLogger
         public static void CleanupLogHistory(string ArchiveConfigString, string FileNameFilter = "")
         {
             // Build an archive object here.
-            LogArchiveConfiguration Config;
-            Config = JsonConvert.DeserializeObject<LogArchiveConfiguration>(ArchiveConfigString);
+            ArchiveConfiguration Config;
+            Config = JsonConvert.DeserializeObject<ArchiveConfiguration>(ArchiveConfigString);
             Logger?.WriteLog($"PULLED ARCHIVE CONFIG FROM JSON CONFIG FILE OK! JSON: \n{JsonConvert.SerializeObject(Config, Formatting.Indented)}", LogType.TraceLog);
 
             // Gets the lists of files in the log file directory and splits them into sets for archiving.
@@ -115,7 +115,7 @@ namespace SharpLogger
             Logger?.WriteLog($"FOUND A TOTAL OF {LogFilesLocated.Length} FILES AND SPLIT THEM INTO A TOTAL OF {LogFileArchiveSets.Count} SETS OF FILES", LogType.InfoLog);
 
             // Now loop each set, build a new Archiver and get output objects.
-            LogArchiver.ArchiveConfig = Config;
+            SharpLogArchiver.ArchiveConfig = Config;
             Logger?.WriteLog("STORED CONFIG FOR ARCHIVES OK! KICKING OFF LOG ARCHIVAL PROCESS IN A BACKGROUND THREAD NOW...", LogType.WarnLog);
 
             // Run this in a task so we don't hang up the whole main operation of the API
@@ -125,8 +125,8 @@ namespace SharpLogger
                 foreach (var LogFileSet in LogFileArchiveSets)
                 {
                     // Build Archiver here then build compressed set.
-                    var ArchiveBuilder = new LogArchiver(LogFileSet);
-                    string ArchiveName = new FileInfo(ArchiveBuilder.OutputFileName).Name;
+                    var ArchiveBuilder = new SharpLogArchiver(LogFileSet);
+                    string ArchiveName = new FileInfo(ArchiveBuilder.ArchiveOutputFile).Name;
                     Logger?.WriteLog($"[{ArchiveName}] --> PULLING ARCHIVE OBJECT TO USE NOW...", LogType.TraceLog);
 
                     // Get archive object here and then store file information into it.
@@ -136,7 +136,7 @@ namespace SharpLogger
                     try
                     {
                         // Write entries for the files into the archiver now.
-                        if (ArchiveBuilder.CompressFiles(out OutputArchive)) Logger?.WriteLog($"[{ArchiveName}] --> GENERATED NEW ZIP FILE OK!", LogType.InfoLog);
+                        if (ArchiveBuilder.CompressArchiveFiles(out OutputArchive)) Logger?.WriteLog($"[{ArchiveName}] --> GENERATED NEW ZIP FILE OK!", LogType.InfoLog);
                         else Logger?.WriteLog($"[{ArchiveName}] --> FAILED TO WRITE LOG ENTRIES FOR ARCHIVE SET!", LogType.ErrorLog);
                     }
                     catch (Exception CompressEx)

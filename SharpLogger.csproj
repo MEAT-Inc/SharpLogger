@@ -57,9 +57,8 @@
   <ItemGroup>
     <Compile Include="LogBroker.cs" />
     <Compile Include="LoggingSetup.cs" />
-    <Compile Include="LogArchiving\LogArchiveConfiguration.cs" />
-    <Compile Include="LogArchiving\LogArchiveEvents.cs" />
-    <Compile Include="LogArchiving\LogArchiver.cs" />
+    <Compile Include="LogArchiving\ArchiveConfiguration.cs" />
+    <Compile Include="LogArchiving\SharpLogArchiver.cs" />
     <Compile Include="LoggerObjects\BaseLogger.cs" />
     <Compile Include="LoggerObjects\ConsoleLogger.cs" />
     <Compile Include="LoggerObjects\FileLogger.cs" />
