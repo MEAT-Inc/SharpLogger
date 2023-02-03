@@ -90,8 +90,8 @@ namespace SharpLogger
         public static void CleanupLogHistory(string ArchiveConfigString, string FileNameFilter = "")
         {
             // Build an archive object here.
-            ArchiveConfiguration Config;
-            Config = JsonConvert.DeserializeObject<ArchiveConfiguration>(ArchiveConfigString);
+            SharpLogArchiver.ArchiveConfiguration Config;
+            Config = JsonConvert.DeserializeObject<SharpLogArchiver.ArchiveConfiguration>(ArchiveConfigString);
             Logger?.WriteLog($"PULLED ARCHIVE CONFIG FROM JSON CONFIG FILE OK! JSON: \n{JsonConvert.SerializeObject(Config, Formatting.Indented)}", LogType.TraceLog);
 
             // Gets the lists of files in the log file directory and splits them into sets for archiving.
