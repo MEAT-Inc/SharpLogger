@@ -60,7 +60,7 @@
     <Compile Include="LogArchiving\LogArchiveConfiguration.cs" />
     <Compile Include="LogArchiving\LogArchiveEvents.cs" />
     <Compile Include="LogArchiving\LogArchiver.cs" />
-    <Compile Include="LoggerObjects\SharpLogger.cs" />
+    <Compile Include="LoggerObjects\BaseLogger.cs" />
     <Compile Include="LoggerObjects\ConsoleLogger.cs" />
     <Compile Include="LoggerObjects\FileLogger.cs" />
     <Compile Include="LoggerObjects\MasterLogger.cs" />

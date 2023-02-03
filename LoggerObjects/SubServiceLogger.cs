@@ -27,7 +27,7 @@ namespace SharpLogger.LoggerObjects
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
         /// <param name="UseAsync"></param>
-        public SubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) : base(LoggerActions.SubServiceLogger, LoggerName, MinLevel, MaxLevel)
+        internal SubServiceLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) : base(LoggerActions.SubServiceLogger, LoggerName, MinLevel, MaxLevel)
         {
             // Store path and file name here.
             if (!string.IsNullOrEmpty(LogFileName))
@@ -41,10 +41,9 @@ namespace SharpLogger.LoggerObjects
             {
                 // Generate Dynamic values.
                 this.OutputPath = LogBroker.BaseOutputPath;
-                this.LoggerFile = Path.Combine(
-                    this.OutputPath,
-                    $"{this.LoggerName}_LoggerOutput_{DateTime.Now.ToString("ddMMyyy-hhmmss")}.log"
-                );
+                this.LoggerFile =
+                    LogBroker.MainLogFileName ??
+                    Path.Combine(this.OutputPath, $"{this.LoggerName}_LoggerOutput_{DateTime.Now.ToString("ddMMyyy-hhmmss")}.log");
             }
 
             // Build target object and check for Async use cases
@@ -53,14 +52,14 @@ namespace SharpLogger.LoggerObjects
             if (this._isAsync) this.WrapperBuilt = LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
 
             // Build Logger object now.
-            this.LoggingConfig = LogManager.Configuration;
-            this.LoggingConfig.AddRule(
-                LogLevel.FromOrdinal(MinLevel), 
+            LogManager.Configuration.AddRule(
+                LogLevel.FromOrdinal(MinLevel),
                 LogLevel.FromOrdinal(MaxLevel),
-                this._isAsync ? WrapperBuilt : ConsoleTarget, LoggerName, false
-            );
+                this._isAsync ? this.WrapperBuilt : ConsoleTarget);
 
             // Store configuration
+            LogManager.ReconfigExistingLoggers();
+            this.LoggingConfig = LogManager.Configuration;
             this.NLogger = LogManager.GetCurrentClassLogger();
             this.PrintLoggerInfos();
         }

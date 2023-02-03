@@ -227,10 +227,7 @@ namespace SharpLogger
                 (int)MinLevel,
                 (int)MaxLevel
             );
-
-            // Build and add to queue.
-            LoggerQueue.AddLoggerToPool(Logger);
-
+            
             // Log output info for the current DLL Assy
             string AssyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
             Logger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);

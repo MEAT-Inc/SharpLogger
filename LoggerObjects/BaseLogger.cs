@@ -63,7 +63,6 @@ namespace SharpLogger.LoggerObjects
             this.LoggerName = LoggerName + "_" + LoggerType.ToString();
 
             // Add self to queue and validate our NLogger has been built
-            this.NLogger = LogManager.GetCurrentClassLogger();
             LoggerQueue.AddLoggerToPool(this);
         }
 

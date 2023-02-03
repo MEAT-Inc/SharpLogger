@@ -21,7 +21,7 @@ namespace SharpLogger.LoggerObjects
         /// <param name="LoggerName"></param>
         /// <param name="MinLevel"></param>
         /// <param name="MaxLevel"></param>
-        public FileLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) : base(LoggerActions.FileLogger, LoggerName, MinLevel, MaxLevel)
+        internal FileLogger([CallerMemberName] string LoggerName = "", string LogFileName = "", int MinLevel = 0, int MaxLevel = 5, bool UseAsync = false) : base(LoggerActions.FileLogger, LoggerName, MinLevel, MaxLevel)
         {
             // Store path and file name here.
             if (!string.IsNullOrEmpty(LogFileName))
@@ -33,33 +33,27 @@ namespace SharpLogger.LoggerObjects
             }
             else
             {
-                // Check for broker file.
-                if (LogBroker.MainLogFileName != null) this.LoggerFile = LogBroker.MainLogFileName;
-                else
-                {
-                    // Generate Dynamic values.
-                    this.OutputPath = LogBroker.BaseOutputPath;
-                    this.LoggerFile = Path.Combine(
-                        this.OutputPath,
-                        $"{this.LoggerName}_LoggerOutput_{DateTime.Now.ToString("ddMMyyy-hhmmss")}.log"
-                    );
-                }
+                // Generate Dynamic values.
+                this.OutputPath = LogBroker.BaseOutputPath;
+                this.LoggerFile =
+                    LogBroker.MainLogFileName ??
+                    Path.Combine(this.OutputPath, $"{this.LoggerName}_LoggerOutput_{DateTime.Now.ToString("ddMMyyy-hhmmss")}.log");
             }
 
             // Build target object and check for Async use cases
             this._isAsync = UseAsync;
-            var ConsoleTarget = LoggerConfiguration.GenerateConsoleLogger(LoggerName);
-            if (this._isAsync) this.WrapperBuilt = LoggerConfiguration.ConvertToAsyncTarget(ConsoleTarget, MinLevel);
+            var FileTarget = LoggerConfiguration.GenerateFileLogger(LoggerName);
+            if (this._isAsync) this.WrapperBuilt = LoggerConfiguration.ConvertToAsyncTarget(FileTarget, MinLevel);
 
             // Build Logger object now.
-            this.LoggingConfig = LogManager.Configuration;
-            this.LoggingConfig.AddRule(
+            LogManager.Configuration.AddRule(
                 LogLevel.FromOrdinal(MinLevel),
                 LogLevel.FromOrdinal(MaxLevel),
-                this._isAsync ? WrapperBuilt : ConsoleTarget, LoggerName, false
-            );
+                this._isAsync ? WrapperBuilt : FileTarget, LoggerName, false);
 
             // Store configuration and print updated logger information
+            LogManager.ReconfigExistingLoggers();
+            this.LoggingConfig = LogManager.Configuration;
             this.NLogger = LogManager.GetCurrentClassLogger();
             this.PrintLoggerInfos();
         }
