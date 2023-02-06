@@ -55,18 +55,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LogBroker.cs" />
-    <Compile Include="LoggingSetup.cs" />
-    <Compile Include="LogArchiving\ArchiveConfiguration.cs" />
-    <Compile Include="LogArchiving\SharpLogArchiver.cs" />
-    <Compile Include="LoggerObjects\BaseLogger.cs" />
-    <Compile Include="LoggerObjects\ConsoleLogger.cs" />
-    <Compile Include="LoggerObjects\FileLogger.cs" />
-    <Compile Include="LoggerObjects\MasterLogger.cs" />
-    <Compile Include="LoggerObjects\SubServiceLogger.cs" />
-    <Compile Include="LoggerQueue.cs" />
-    <Compile Include="LoggerSupport\LoggerConfiguration.cs" />
-    <Compile Include="LoggerSupport\LoggerEnums.cs" />
+    <Compile Include="SharpLogBroker.cs" />
+    <Compile Include="SharpLogArchiver.cs" />
+    <Compile Include="SharpLogger.cs" />
+    <Compile Include="SharpTargetBuilder.cs" />
+    <Compile Include="SharpLoggerExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -85,6 +78,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>"$(DevEnvDir)\TextTransform.exe" -a !!build!true "$(ProjectDir)Properties\AssemblyInfo.tt"</PreBuildEvent>

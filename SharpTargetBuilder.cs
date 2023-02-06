@@ -4,9 +4,9 @@ using NLog.Layouts;
 using NLog.Targets;
 using NLog.Targets.Wrappers;
 
-namespace SharpLogger.LoggerSupport
+namespace SharpLogger
 {
-    internal static class LoggerConfiguration
+    internal static class SharpTargetBuilder
     {
         // Configuration Strings
         public static string BaseFormatConsole =
