@@ -37,7 +37,7 @@
       <HintPath>packages\Newtonsoft.Json.13.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <HintPath>packages\NLog.5.1.0\lib\net46\NLog.dll</HintPath>
+      <HintPath>packages\NLog.5.1.1\lib\net46\NLog.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
@@ -58,13 +58,13 @@
     <Compile Include="SharpLogBroker.cs" />
     <Compile Include="SharpLogArchiver.cs" />
     <Compile Include="SharpLogger.cs" />
-    <Compile Include="SharpTargetBuilder.cs" />
-    <Compile Include="SharpLoggerExtensions.cs" />
+    <Compile Include="SharpLoggerEnums.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>AssemblyInfo.tt</DependentUpon>
     </Compile>
+    <Compile Include="SharpTargetFormat.cs" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />

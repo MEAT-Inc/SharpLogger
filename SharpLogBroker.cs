@@ -1,17 +1,10 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using NLog;
-using NLog.Config;
-using NLog.Fluent;
+using System.Text.RegularExpressions;
 
 namespace SharpLogger
 {
@@ -29,7 +22,7 @@ namespace SharpLogger
         internal const string _defaultOutputPath = @"C:\\Program Files (x86)\\MEAT Inc\\SharpLogging\\";
 
         // Private static collection of all current logger instances
-        private static List<SharpLogger> _loggerPool = new();
+        private static List<SharpLogger> _loggerPool;              // The collection of all built loggers in this instance
 
         // Private backing fields for logger states and values
         private static bool _loggingEnabled;                       // Sets if logging is currently enabled or disabled for this log broker instance
@@ -42,23 +35,32 @@ namespace SharpLogger
         private static string _logBrokerName;                      // Name of the logger instance for this session setup. (Calling application name)
 
         // NLogger and SharpLogger objects used for logging output
-        private static Logger _logBrokerLogger;                    // The main logger object used for logging output. Can only be assigned while null
-        private static SharpLogger _masterLogger;                  // The main SharpLogger that wraps the Nlogger built on this instance
-        
+        private static SharpLogger _logger;                        // The main SharpLogger that is used to write our output content to a log file or targets
+
         #endregion //Fields
 
         #region Properties
-        
+
         // Public facing properties holding configuration for our logging levels and master enabled value
-        public static LogLevel MinLevel
+        public static LogType MinLevel
         {
-            get => _minLevel;
-            internal set => _minLevel = value;
+            get => _minLevel.ToLogType();
+            private set
+            {
+                // Convert the value into a LogLevel and set it
+                LogLevel ConvertedLevel = value.ToNLevel();
+                _minLevel = ConvertedLevel;
+            }
         }
-        public static LogLevel MaxLevel
+        public static LogType MaxLevel
         {
-            get => _maxLevel;
-            internal set => _maxLevel = value;
+            get => _maxLevel.ToLogType();
+            private set
+            {
+                // Convert the value into a LogLevel and set it
+                LogLevel ConvertedLevel = value.ToNLevel();
+                _maxLevel = ConvertedLevel;
+            }
         }
         public static bool LoggingEnabled
         {
@@ -75,7 +77,7 @@ namespace SharpLogger
         public static string LogFilePath
         {
             get => _logFilePath;
-            private set => throw new InvalidOperationException("Error! Can not force specify a log file base path!");
+            private set => _logFilePath = value;
         }
         public static string LogBrokerName
         {
@@ -83,28 +85,29 @@ namespace SharpLogger
             internal set => _logBrokerName = value;
         }
 
-        // Main logger objects used to configure new child logger instances
-        public static Logger LogBrokerLogger
+        // Main logger objects used to configure new child logger instances and the public logger pool
+        public static SharpLogger Logger
         {
-            get => _logBrokerLogger;
+            get => _logger;
             private set
             {
                 // Only allow setting this logger instance from outside the broker if the logger is currently null
-                if (_logBrokerLogger == null) _logBrokerLogger = value;
+                if (_logger == null) _logger = value;
                 else throw new InvalidOperationException("Error! Can not reset log broker logger after being built!");
             }
         }
-        public static SharpLogger MasterLogger
+        public static SharpLogger[] LoggerPool
         {
-            get => _masterLogger;
-            private set
+            get
             {
-                // Only allow setting this logger instance from outside the broker if the logger is currently null
-                if (_masterLogger == null) _masterLogger = value;
-                else throw new InvalidOperationException("Error! Can not reset log broker logger after being built!");
+                lock (_loggerPool) return _loggerPool.ToArray();
             }
         }
-        
+
+        // Public facing constant logger configuration objects for formatting output strings
+        public static SharpFileTargetFormat DefaultFileFormat { get; set; }
+        public static SharpConsoleTargetFormat DefaultConsoleFormat { get; set; }
+
         #endregion //Properties
 
         #region Structs and Classes
@@ -118,17 +121,20 @@ namespace SharpLogger
         /// </summary>
         /// <param name="InstanceName">Name of the logger session being configured</param>
         /// <param name="OutputFilePath">The FULL path to our desired output log file</param>
-        /// <param name="MinLevel">Minimum logging level for our configuration</param>
-        /// <param name="MaxLevel">Maximum logging level for our configuration</param>
-        public static void InitializeLogging(string InstanceName, string OutputFilePath = null, LogType MinLogLevel = LogType.TraceLog, LogType MaxLogLevel = LogType.FatalLog)
+        /// <param name="MinLogLevel">Minimum logging level for our configuration</param>
+        /// <param name="MaxLogLevel">Maximum logging level for our configuration</param>
+        public static bool InitializeLogging(string InstanceName, string OutputFilePath = null, LogType MinLogLevel = LogType.TraceLog, LogType MaxLogLevel = LogType.FatalLog)
         {
+            // Make sure we're able to build a new logging instance first
+            if (Logger != null && LoggerPool != null) return false;
+
             // Begin by setting our instance name and setting up the min and max logging values
             LogBrokerName = InstanceName;
             if ((int)MinLogLevel == 6 && (int)MaxLogLevel == 6) LoggingEnabled = false;
             else
             {
-                MinLevel = (int)MinLogLevel < 0 ? LogLevel.Trace : MinLogLevel.ToNLevel();
-                MaxLevel = (int)MaxLogLevel > 6 ? LogLevel.Fatal : MaxLogLevel.ToNLevel();
+                _minLevel = (int)MinLogLevel < 0 ? LogLevel.Trace : MinLogLevel.ToNLevel();
+                _maxLevel = (int)MaxLogLevel > 6 ? LogLevel.Fatal : MaxLogLevel.ToNLevel();
             }
 
             // Now find our output log file path/name value and create the logging output file
@@ -174,48 +180,61 @@ namespace SharpLogger
 
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             string AssyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            MasterLogger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
-            MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
-            MasterLogger.WriteLog($"--> TIME OF DLL INIT: {DateTime.Now:g}", LogType.InfoLog);
-            MasterLogger.WriteLog($"--> DLL ASSEMBLY VER: {AssyVersion}", LogType.InfoLog);
-            MasterLogger.WriteLog($"--> HAPPY LOGGING. LETS HOPE EVERYTHING GOES WELL...", LogType.InfoLog);
+            Logger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
+            Logger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
+            Logger.WriteLog($"--> TIME OF DLL INIT: {DateTime.Now:g}", LogType.InfoLog);
+            Logger.WriteLog($"--> DLL ASSEMBLY VER: {AssyVersion}", LogType.InfoLog);
+            Logger.WriteLog($"--> HAPPY LOGGING. LETS HOPE EVERYTHING GOES WELL...", LogType.InfoLog);
+
+            // Return true once our logger instance is built
+            return true;
         }
 
-        /// <summary>
-        /// Gets all loggers that exist currently.
-        /// </summary>
-        /// <returns></returns>
-        public static List<SharpLogger> GetLoggers()
-        {
-            // Lock the logger pool so we don't have thread issues
-            lock (_loggerPool)
-            {
-                // Get the logger objects and return out 
-                return _loggerPool;
-            }
-        }
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
         /// <summary>
         /// Gets loggers based on a given type of logger.
         /// </summary>
         /// <param name="TypeOfLogger">Type of logger to get.</param>
         /// <returns>List of all loggers for this type.</returns>
-        public static List<SharpLogger> GetLoggers(LoggerActions TypeOfLogger)
+        public static IEnumerable<SharpLogger> FindLoggers(LoggerActions TypeOfLogger)
         {
             // Lock the logger pool so we don't have thread issues
             lock (_loggerPool)
             {
                 // Find and return the matching logger object instances
-                return _loggerPool.Where(LogObj => LogObj.LoggerType == TypeOfLogger).ToList();
+                return _loggerPool.Where(LogObj => LogObj.LoggerType == TypeOfLogger);
             }
         }
+        /// <summary>
+        /// Gets loggers based on a given type of logger.
+        /// </summary>
+        /// <param name="LoggerName">Name of loggers to get.</param>
+        /// <param name="UseRegex">When true, the logger name is used as a regex pattern</param>
+        /// <returns>List of all loggers for this type.</returns>
+        public static IEnumerable<SharpLogger> FindLoggers(string LoggerName, bool UseRegex = false)
+        {
+            // Lock the logger pool so we don't have thread issues
+            lock (_loggerPool)
+            {
+                // Find and return the matching logger object instances
+                return !UseRegex 
+                    ? _loggerPool.Where(LogObj => LogObj.LoggerName.Contains(LoggerName)) 
+                    : _loggerPool.Where(LogObj => Regex.Match(LogObj.LoggerName, LoggerName).Success);
+            }
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
 
         /// <summary>
         /// Adds a logger item to the pool of all loggers.
         /// </summary>
         /// <param name="LoggerItem">Item to add to the pool.</param>
-        internal static void RegisterLogger(SharpLogger LoggerItem)
+        /// <returns>True if the logger is registered. False if it's replaced</returns>
+        internal static bool RegisterLogger(SharpLogger LoggerItem)
         {
             // Lock the logger pool so we don't have thread issues
+            _loggerPool ??= new List<SharpLogger>();
             lock (_loggerPool)
             {
                 // Find existing loggers that may have the same name as this logger obj.
@@ -224,20 +243,23 @@ namespace SharpLogger
                     // Update current.
                     int IndexOfExisting = _loggerPool.IndexOf(LoggerItem);
                     _loggerPool[IndexOfExisting] = LoggerItem;
-                    return;
+                    return false;
                 }
 
                 // If the logger didn't get added (no dupes) do it not.
                 _loggerPool.Add(LoggerItem);
+                return true;
             }
         }
         /// <summary>
         /// Removes the logger passed from the logger queue
         /// </summary>
         /// <param name="LoggerItem">Logger to yank</param>
-        internal static void DestroyLogger(SharpLogger LoggerItem)
+        /// <returns>True if the logger is removed. False if it is not</returns>
+        internal static bool DestroyLogger(SharpLogger LoggerItem)
         {
             // Lock the logger pool so we don't have thread issues
+            _loggerPool ??= new List<SharpLogger>();
             lock (_loggerPool)
             {
                 // Pull out all the dupes.
@@ -247,7 +269,37 @@ namespace SharpLogger
                 // Check if new logger is in loggers filtered or not and store it.
                 if (NewLoggers.Contains(LoggerItem)) NewLoggers.Remove(LoggerItem);
                 _loggerPool = NewLoggers;
+
+                // Return based on if logger was removed or not
+                return NewLoggers.Count != 0;
             }
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Converts a LogType into a LogLevel for NLOG use.
+        /// </summary>
+        /// <param name="Level"></param>
+        /// <returns>LogLevel Pulled out of here.</returns>
+        internal static LogLevel ToNLevel(this LogType Level)
+        {
+            // Find if the ordinal value is out of range or not. Default to the lowest level supported
+            return (int)Level > 6
+                ? MinLevel.ToNLevel()
+                : LogLevel.FromOrdinal((int)Level);
+        }
+        /// <summary>
+        /// Converts a given NLogLevel into a LogType
+        /// </summary>
+        /// <param name="Level">Level to check</param>
+        /// <returns>Gives back a default log type.</returns>
+        internal static LogType ToLogType(this LogLevel Level)
+        {
+            // Find if the ordinal value is out of range or not. Default to the lowest level supported
+            return Level.Ordinal > 6
+                ? MinLevel
+                : (LogType)Level.Ordinal;
         }
     }
 }
