@@ -31,7 +31,7 @@ namespace SharpLogger
         {
             // Write some info about this archive process here.
             string NameOnly = Path.GetFileNameWithoutExtension(e.FileAdded);
-            // Logger?.WriteLog($"[{e.ArchiveFileName}] ::: ADDED {NameOnly} TO ARCHIVE OK! ({e.FilesRemaining} FILES LEFT. {e.PercentDone:F2}%)", LogType.TraceLog);
+            this._archiveLogger?.WriteLog($"[{e.ArchiveFileName}] ::: ADDED {NameOnly} TO ARCHIVE OK! ({e.FilesRemaining} FILES LEFT. {e.PercentDone:F2}%)", LogType.TraceLog);
             this.FileAddedToArchive?.Invoke(this, e);
         }
         /// <summary>
@@ -43,7 +43,7 @@ namespace SharpLogger
             // Write some info about this archive process here.
             long FileSizeString = new FileInfo(e.ArchiveOutputFile).Length;
             string TimeSpentString = e.TimeSpentRunning.ToString("mm\\:ss\\:fff");
-            // Logger?.WriteLog($"[{e.ArchiveFileName}] ::: ARCHIVE WAS BUILT OK! WROTE OUT {FileSizeString} BYES IN {TimeSpentString}", LogType.InfoLog);
+            this._archiveLogger?.WriteLog($"[{e.ArchiveFileName}] ::: ARCHIVE WAS BUILT OK! WROTE OUT {FileSizeString} BYES IN {TimeSpentString}", LogType.InfoLog);
             this.ArchiveCompleted?.Invoke(this, e);
         }
         /// <summary>
@@ -53,14 +53,17 @@ namespace SharpLogger
         protected virtual void OnFileOperationFailure(ArchiveProgressEventArgs e, Exception ExThrown)
         {
             // Write some info about this archive process here.
-            // Logger?.WriteLog($"[{e.ArchiveFileName}] ::: FAILED TO PERFORM OPERATION ON FILE!", LogType.ErrorLog);
-            // Logger?.WriteLog($"[{e.ArchiveFileName}] ::: EXCEPTION THROWN: {ExThrown.Message}");
+            this._archiveLogger?.WriteLog($"[{e.ArchiveFileName}] ::: FAILED TO PERFORM OPERATION ON FILE!", LogType.ErrorLog);
+            this._archiveLogger?.WriteLog($"[{e.ArchiveFileName}] ::: EXCEPTION THROWN: {ExThrown.Message}");
             this.FileOperationFailure?.Invoke(this, e);
         }
 
         #endregion //Custom Events
 
         #region Fields
+
+        // Private logger instance used to help log information about this archive process
+        private readonly SharpLogger _archiveLogger;                        // SharpLogger instance used to write information about archiving
 
         // Timer for archive operations and the archive configuration used for this archiver
         private readonly Stopwatch _archiveTimer;                           // Timer to track archive routine execution time
@@ -264,6 +267,9 @@ namespace SharpLogger
             this._archivedFileSets = new Dictionary<string, string[]>();
             this._archiveZipOutputs = new Dictionary<string, ZipArchive>();
 
+            // Configure a new logger for this archive helper
+            this._archiveLogger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
+
             // Build our archiver file output name and store it
             if (!this._initializeArchiveSets())
                 throw new InvalidOperationException("Error! Failed to configure a collection of ZipArchives!");
@@ -300,6 +306,9 @@ namespace SharpLogger
             this._archivedFileSets = new Dictionary<string, string[]>();
             this._archiveZipOutputs = new Dictionary<string, ZipArchive>();
 
+            // Configure a new logger for this archive helper
+            this._archiveLogger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
+
             // Build our archiver file output name and store it
             if (!this._initializeArchiveSets())
                 throw new InvalidOperationException("Error! Failed to configure a collection of ZipArchives!");
@@ -314,7 +323,7 @@ namespace SharpLogger
         public bool ArchiveLogFiles()
         {
             // Log that we're starting to build output Archive Zip files now 
-            // Logger?.WriteLog($"BUILDING ARCHIVE LOG FILE SETS FOR ARCHIVER {this.ArchiverName} NOW...", LogType.InfoLog);
+            this._archiveLogger?.WriteLog($"BUILDING ARCHIVE LOG FILE SETS FOR ARCHIVER {this.ArchiverName} NOW...", LogType.InfoLog);
 
             // Loop all the archive objects stored on this class instance and compress our file sets now
             bool ArchivesPassed = true;
@@ -328,7 +337,7 @@ namespace SharpLogger
                     .ToArray();
 
                 // Now using the built ZipArchive from the collection of built Zips, compress the found file set
-                // Logger?.WriteLog($"--> ARCHIVING FILE SET FOR OUTPUT ZIP NAMED: {ArchiveOutputFile} NOW...", LogType.DebugLog);
+                this._archiveLogger?.WriteLog($"--> ARCHIVING FILE SET FOR OUTPUT ZIP NAMED: {ArchiveOutputFile} NOW...", LogType.DebugLog);
                 using (ArchiveOutputZip)
                 {
                     // Append all entries now.
@@ -352,8 +361,8 @@ namespace SharpLogger
                             this.OnFileOperationFailure(ArchiveFailedArgs, ArchiveException);
 
                             // Log our exception thrown during an archive process and exit out failed
-                            // Logger?.WriteLog("--> FAILED TO BUILD NEW ZIP ARCHIVE! THIS IS A REAL WHAT THE FUCK MOMENT", LogType.ErrorLog);
-                            // Logger?.WriteLog("--> ERROR IS BEING LOGGED BELOW", ArchiveEx);
+                            this._archiveLogger?.WriteLog("--> FAILED TO BUILD NEW ZIP ARCHIVE! THIS IS A REAL WHAT THE FUCK MOMENT", LogType.ErrorLog);
+                            this._archiveLogger?.WriteException("--> ERROR IS BEING LOGGED BELOW", ArchiveException);
                             ArchivesPassed = false;
                         }
                     }
@@ -365,7 +374,7 @@ namespace SharpLogger
 
             // Once all archives are built and logged out, return based on if any failed or not and if all archives exist
             this._archiveTimer.Stop();
-            // Logger?.WriteLog($"ARCHIVED ALL FOUND LOG FILES CORRECTLY IN {this._archiveTimer.Elapsed}", LogType.WarnLog);
+            this._archiveLogger?.WriteLog($"ARCHIVED ALL FOUND LOG FILES CORRECTLY IN {this._archiveTimer.Elapsed}", LogType.WarnLog);
             return ArchivesPassed && this.ArchiveOutputFiles.All(File.Exists);
         }
         /// <summary>
@@ -383,31 +392,32 @@ namespace SharpLogger
                 .Reverse();
 
             // Log our how many archives we found now and exit out of this routine if we're not at the trigger count
-            // Logger?.WriteLog($"PULLED A TOTAL OF {LogArchivesLocated.Length} LOG ARCHIVE OBJECTS", LogType.InfoLog);
+            this._archiveLogger?.WriteLog($"PULLED A TOTAL OF {LogArchivesLocated.Count()} LOG ARCHIVE OBJECTS", LogType.InfoLog);
             if (LogArchivesLocated.Count() < this.ArchiveConfig.ArchiveCleanupFileCount)
             {
                 // If less than the limit return out
-                // Logger?.WriteLog($"NOT CLEANING OUT ARCHIVES SINCE OUR ARCHIVE COUNT IS LESS THAN OUR SPECIFIED VALUE OF {ArchiveLimit}", LogType.WarnLog);
+                int ArchiveLimit = this.ArchiveConfig.ArchiveCleanupFileCount;
+                this._archiveLogger?.WriteLog($"NOT CLEANING OUT ARCHIVES SINCE OUR ARCHIVE COUNT IS LESS THAN OUR SPECIFIED VALUE OF {ArchiveLimit}", LogType.WarnLog);
                 return false;
             }
 
             // Now locate and delete the archive sets found that aren't desired for the history based on our configuration
             var ArchiveSetsToRemove = LogArchivesLocated.Take(this.ArchiveConfig.ArchiveCleanupFileCount);
-            // Logger?.WriteLog($"REMOVING A TOTAL OF {ArchiveSetsToRemove.Length} ARCHIVE FILES NOW...", LogType.InfoLog);
-            // Logger?.WriteLog("RUNNING REMOVAL OPERATION IN BACKGROUND TO KEEP MAIN THREADS ALIVE AND WELL!", LogType.WarnLog);
+            this._archiveLogger?.WriteLog($"REMOVING A TOTAL OF {ArchiveSetsToRemove.Count()} ARCHIVE FILES NOW...", LogType.InfoLog);
+            this._archiveLogger?.WriteLog("RUNNING REMOVAL OPERATION IN BACKGROUND TO KEEP MAIN THREADS ALIVE AND WELL!", LogType.WarnLog);
 
             // Loop them all and delete each file set one by one
             bool CleanupPassed = true;
             foreach (var LogArchiveSet in ArchiveSetsToRemove)
             {
                 // Log information about each archive file we're tossing our and try to delete it now
-                // Logger?.WriteLog($"REMOVING ARCHIVE OBJECT {LogArchiveSet} NOW...", LogType.TraceLog);
+                this._archiveLogger?.WriteLog($"REMOVING ARCHIVE OBJECT {LogArchiveSet} NOW...", LogType.TraceLog);
                 try { File.Delete(LogArchiveSet); }
                 catch (Exception DeleteArchiveEx)
                 {
                     // Log our exception thrown during an archive process and exit out failed
-                    // Logger?.WriteLog($"FAILED TO REMOVE ARCHIVE SET: {LogArchiveSet}!! THIS IS WEIRD!", LogType.WarnLog);
-                    // Logger?.WriteLog("ERROR IS BEING LOGGED BELOW", DeleteArchiveEx);
+                    this._archiveLogger?.WriteLog($"FAILED TO REMOVE ARCHIVE SET: {LogArchiveSet}!! THIS IS WEIRD!", LogType.WarnLog);
+                    this._archiveLogger?.WriteException("ERROR IS BEING LOGGED BELOW", DeleteArchiveEx);
                     CleanupPassed = false;
                 }
             }
@@ -425,7 +435,7 @@ namespace SharpLogger
         private bool _initializeArchiveSets()
         {
             // Log our what we're doing and find all of the file sets needed
-            // Logger?.WriteLog($"ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: {this.ArchiveConfig.SearchPath}...", LogType.WarnLog);
+            this._archiveLogger?.WriteLog($"ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: {this.ArchiveConfig.SearchPath}...", LogType.WarnLog);
 
             // Ensure our new archive configuration values can be used for this routine
             if (this.ArchiveConfig.SearchPath == null || !Directory.Exists(this.ArchiveConfig.SearchPath))
@@ -472,8 +482,8 @@ namespace SharpLogger
                 this._archiveZipOutputs.Add(ArchiveFileName, ArchiveZipObject);
 
                 // Log the next file set built and move on
-                // Logger?.WriteLog($"--> BUILT ARCHIVE FILE NAME: {ArchiveFileName}");
-                // Logger?.WriteLog($"--> ARCHIVE FILE WILL HOLD {ArchiveSet.Length} FILES STARTING FROM {ArchiveSet.First()} THROUGH {ArchiveSet.Last()}");
+                this._archiveLogger?.WriteLog($"--> BUILT ARCHIVE FILE NAME: {ArchiveFileName}");
+                this._archiveLogger?.WriteLog($"--> ARCHIVE FILE WILL HOLD {ArchiveSet.Length} FILES STARTING FROM {ArchiveSet.First()} THROUGH {ArchiveSet.Last()}");
             }
 
             // Return out based on the number of files found for our archives
