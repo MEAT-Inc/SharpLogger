@@ -202,8 +202,10 @@ namespace SharpLogger
 
             // Print out some logger information values and store this logger in our broker pool
             this.WriteLog($"LOGGER NAME: {this.LoggerName} HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
+            this.WriteLog($"--> IS ASYNC:      {(this.IsAsyncLogger ? "YES" : "NO")}", LogType.TraceLog);
             this.WriteLog($"--> TIME CREATED:  {this.TimeCreated:G}", LogType.TraceLog);
             this.WriteLog($"--> LOGGER GUID:   {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
+            this.WriteLog($"--> TARGET COUNT:  {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
             SharpLogBroker.RegisterLogger(this);
@@ -258,6 +260,35 @@ namespace SharpLogger
                 this._nLogger.Log(Level.ToNLevel(), LogMessage);
         }
         /// <summary>
+        /// Writes an object of any kind out after calling the ToString method on it.
+        /// This splits the result of the ToString call and logs each line out accordingly
+        /// </summary>
+        /// <param name="ObjectToLog">The object we wish to log out</param>
+        /// <param name="Level">The level to log the object at</param>
+        public void WriteLog(object ObjectToLog, LogType Level = LogType.DebugLog)
+        {
+            // Make sure logging is not set to off right now
+            if (!this.LoggingEnabled) return;
+
+            // Configure a set of new scope properties for our output content log entries
+            var ScopeProperties = new KeyValuePair<string, object>[]
+            {
+                new("logger-class", this.LoggerClass),
+                new("calling-class", this._getCallingClass()),
+                new("calling-class-short", this._getCallingClass(true)),
+            };
+
+            // Convert the object to a string and split it out based on new line characters
+            string[] ObjectStrings = ObjectToLog.ToString()
+                .Split(new[] { "\n\r" }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(LogLine => !string.IsNullOrWhiteSpace(LogLine))
+                .ToArray();
+
+            // Using the built scope properties, write our log entries out to the targets now
+            using (this._nLogger.PushScopeProperties(ScopeProperties))
+                foreach (var ObjectString in ObjectStrings) this._nLogger.Log(Level.ToNLevel(), ObjectString);
+        }
+        /// <summary>
         /// Writes an exceptions contents out to the logger
         /// </summary>
         /// <param name="LoggedEx">LoggedEx to write</param>
@@ -298,13 +329,13 @@ namespace SharpLogger
         /// </summary>
         /// <param name="MessageExInfo">Info message</param>
         /// <param name="Ex">LoggedEx to write</param>
-        /// <param name="LevelTypes">Levels. Msg and then LoggedEx</param>
-        public void WriteLog(string MessageExInfo, Exception Ex, params LogType[] LevelTypes)
+        /// <param name="LogLevels">Levels. Msg and then LoggedEx</param>
+        public void WriteLog(string MessageExInfo, Exception Ex, params LogType[] LogLevels)
         {
             // Check level count and make sure logging is set to on
             if (!this.LoggingEnabled) return;
-            if (LevelTypes.Length == 0) { LevelTypes = new LogType[] { LogType.ErrorLog, LogType.ErrorLog }; }
-            if (LevelTypes.Length == 1) { LevelTypes = LevelTypes.Append(LevelTypes[0]).ToArray(); }
+            if (LogLevels.Length == 0) { LogLevels = new LogType[] { LogType.ErrorLog, LogType.ErrorLog }; }
+            if (LogLevels.Length == 1) { LogLevels = LogLevels.Append(LogLevels[0]).ToArray(); }
 
             // Configure a set of new scope properties for our output content log entries
             var ScopeProperties = new KeyValuePair<string, object>[]
@@ -317,19 +348,19 @@ namespace SharpLogger
             // Write Log Message then exception and all information found from the exception here
             using (this._nLogger.PushScopeProperties(ScopeProperties))
             {
-                this._nLogger.Log(LevelTypes[0].ToNLevel(), MessageExInfo);
-                this._nLogger.Log(LevelTypes[0].ToNLevel(), $"EXCEPTION THROWN FROM {Ex.TargetSite}. DETAILS ARE SHOWN BELOW");
-                this._nLogger.Log(LevelTypes[1].ToNLevel(), $"\tEX MESSAGE {Ex.Message}");
-                this._nLogger.Log(LevelTypes[1].ToNLevel(), $"\tEX SOURCE  {Ex?.Source}");
-                this._nLogger.Log(LevelTypes[1].ToNLevel(), $"\tEX TARGET  {Ex.TargetSite?.Name}");
-                this._nLogger.Log(LevelTypes[1].ToNLevel(),
+                this._nLogger.Log(LogLevels[0].ToNLevel(), MessageExInfo);
+                this._nLogger.Log(LogLevels[0].ToNLevel(), $"EXCEPTION THROWN FROM {Ex.TargetSite}. DETAILS ARE SHOWN BELOW");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX MESSAGE {Ex.Message}");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX SOURCE  {Ex?.Source}");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX TARGET  {Ex.TargetSite?.Name}");
+                this._nLogger.Log(LogLevels[1].ToNLevel(),
                     Ex.StackTrace == null
                         ? "FURTHER DIAGNOSTIC INFO IS NOT AVAILABLE AT THIS TIME."
                         : $"\tEX STACK\n{Ex.StackTrace.Replace("\n", "\n\t")}");
 
                 // If our inner exception is not null, run it through this logger.
-                this._nLogger.Log(LevelTypes[1].ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
-                this.WriteLog(MessageExInfo, Ex.InnerException, LevelTypes);
+                this._nLogger.Log(LogLevels[1].ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
+                this.WriteLog(MessageExInfo, Ex.InnerException, LogLevels);
             }
         }
 

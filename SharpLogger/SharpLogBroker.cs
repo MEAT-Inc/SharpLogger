@@ -189,6 +189,40 @@ namespace SharpLogger
             // Return true once our logger instance is built
             return true;
         }
+        /// <summary>
+        /// Invokes a new archive routine from inside the broker to avoid having to spawn a new archiver instance
+        /// </summary>
+        /// <param name="InstanceName">Name of the session to configure</param>
+        /// <param name="ArchiveConfiguration">The archive configuration to generate archives with</param>
+        /// <returns>True if the archive routine and cleanup routines passed. False if either failed</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the log broker was not setup and failure was seen during setup</exception>
+        public static bool ArchiveLogHistory(string InstanceName, SharpLogArchiver.ArchiveConfiguration ArchiveConfiguration)
+        {
+            // Ensure our logger and logger pool have been built at this point
+            if (Logger == null || LoggerPool == null) InitializeLogging(InstanceName);
+            if (Logger == null || LoggerPool == null) 
+                throw new InvalidOperationException("Error! Failed to setup new LogBroker instance!");
+
+            // Log static archive routine is starting
+            Logger.WriteLog($"STARTING LOG ARCHIVAL ROUTINE FOR ARCHIVE SESSION NAMED {InstanceName}...", LogType.InfoLog);
+
+            // Spawn a new archive helper object and perform an archive routine based on the configuration provided
+            SharpLogArchiver ArchiveHelper = new SharpLogArchiver(InstanceName, ArchiveConfiguration);
+            bool ArchivePassed = ArchiveHelper.ArchiveLogFiles(); 
+            bool CleanupPassed = ArchiveHelper.CleanupArchiveHistory();
+
+            // Return and log based on the results of this archive routine
+            Logger.WriteLog("ARCHIVE ROUTINE COMPLETE! RESULTS ARE BEING LOGGED BELOW", LogType.InfoLog);
+            Logger.WriteLog(
+                $"--> ARCHIVE STATUS: {(ArchivePassed ? "ARCHIVE ROUTINE PASSED!" : "ARCHIVE ROUTINE FAILED!")}",
+                ArchivePassed ? LogType.InfoLog : LogType.ErrorLog);
+            Logger.WriteLog(
+                $"--> CLEANUP STATUS: {(CleanupPassed ? "CLEANUP ROUTINE PASSED!" : "CLEANUP ROUTINE FAILED!")}",
+                ArchivePassed ? LogType.InfoLog : LogType.ErrorLog);
+ 
+            // Return out based on the status of the archive and cleanup routines 
+            return ArchivePassed && CleanupPassed;
+        }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
 
