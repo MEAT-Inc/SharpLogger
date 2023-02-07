@@ -35,7 +35,7 @@ namespace SharpLogger
         private static string _logBrokerName;                      // Name of the logger instance for this session setup. (Calling application name)
 
         // NLogger and SharpLogger objects used for logging output
-        private static SharpLogger _logger;                        // The main SharpLogger that is used to write our output content to a log file or targets
+        private static SharpLogger _masterLogger;                        // The main SharpLogger that is used to write our output content to a log file or targets
 
         #endregion //Fields
 
@@ -86,13 +86,13 @@ namespace SharpLogger
         }
 
         // Main logger objects used to configure new child logger instances and the public logger pool
-        public static SharpLogger Logger
+        public static SharpLogger MasterLogger
         {
-            get => _logger;
+            get => _masterLogger;
             private set
             {
                 // Only allow setting this logger instance from outside the broker if the logger is currently null
-                if (_logger == null) _logger = value;
+                if (_masterLogger == null) _masterLogger = value;
                 else throw new InvalidOperationException("Error! Can not reset log broker logger after being built!");
             }
         }
@@ -126,7 +126,7 @@ namespace SharpLogger
         public static bool InitializeLogging(string InstanceName, string OutputFilePath = null, LogType MinLogLevel = LogType.TraceLog, LogType MaxLogLevel = LogType.FatalLog)
         {
             // Make sure we're able to build a new logging instance first
-            if (Logger != null && LoggerPool != null) return false;
+            if (MasterLogger != null && LoggerPool != null) return false;
 
             // Begin by setting our instance name and setting up the min and max logging values
             LogBrokerName = InstanceName;
@@ -180,11 +180,11 @@ namespace SharpLogger
 
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             string AssyVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            Logger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
-            Logger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
-            Logger.WriteLog($"--> TIME OF DLL INIT: {DateTime.Now:g}", LogType.InfoLog);
-            Logger.WriteLog($"--> DLL ASSEMBLY VER: {AssyVersion}", LogType.InfoLog);
-            Logger.WriteLog($"--> HAPPY LOGGING. LETS HOPE EVERYTHING GOES WELL...", LogType.InfoLog);
+            MasterLogger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
+            MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
+            MasterLogger.WriteLog($"--> TIME OF DLL INIT: {DateTime.Now:g}", LogType.InfoLog);
+            MasterLogger.WriteLog($"--> DLL ASSEMBLY VER: {AssyVersion}", LogType.InfoLog);
+            MasterLogger.WriteLog($"--> HAPPY LOGGING. LETS HOPE EVERYTHING GOES WELL...", LogType.InfoLog);
 
             // Return true once our logger instance is built
             return true;
@@ -199,12 +199,12 @@ namespace SharpLogger
         public static bool ArchiveLogHistory(string InstanceName, SharpLogArchiver.ArchiveConfiguration ArchiveConfiguration)
         {
             // Ensure our logger and logger pool have been built at this point
-            if (Logger == null || LoggerPool == null) InitializeLogging(InstanceName);
-            if (Logger == null || LoggerPool == null) 
+            if (MasterLogger == null || LoggerPool == null) InitializeLogging(InstanceName);
+            if (MasterLogger == null || LoggerPool == null) 
                 throw new InvalidOperationException("Error! Failed to setup new LogBroker instance!");
 
             // Log static archive routine is starting
-            Logger.WriteLog($"STARTING LOG ARCHIVAL ROUTINE FOR ARCHIVE SESSION NAMED {InstanceName}...", LogType.InfoLog);
+            MasterLogger.WriteLog($"STARTING LOG ARCHIVAL ROUTINE FOR ARCHIVE SESSION NAMED {InstanceName}...", LogType.InfoLog);
 
             // Spawn a new archive helper object and perform an archive routine based on the configuration provided
             SharpLogArchiver ArchiveHelper = new SharpLogArchiver(InstanceName, ArchiveConfiguration);
@@ -212,11 +212,11 @@ namespace SharpLogger
             bool CleanupPassed = ArchiveHelper.CleanupArchiveHistory();
 
             // Return and log based on the results of this archive routine
-            Logger.WriteLog("ARCHIVE ROUTINE COMPLETE! RESULTS ARE BEING LOGGED BELOW", LogType.InfoLog);
-            Logger.WriteLog(
+            MasterLogger.WriteLog("ARCHIVE ROUTINE COMPLETE! RESULTS ARE BEING LOGGED BELOW", LogType.InfoLog);
+            MasterLogger.WriteLog(
                 $"--> ARCHIVE STATUS: {(ArchivePassed ? "ARCHIVE ROUTINE PASSED!" : "ARCHIVE ROUTINE FAILED!")}",
                 ArchivePassed ? LogType.InfoLog : LogType.ErrorLog);
-            Logger.WriteLog(
+            MasterLogger.WriteLog(
                 $"--> CLEANUP STATUS: {(CleanupPassed ? "CLEANUP ROUTINE PASSED!" : "CLEANUP ROUTINE FAILED!")}",
                 ArchivePassed ? LogType.InfoLog : LogType.ErrorLog);
  

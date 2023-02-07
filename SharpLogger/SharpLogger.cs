@@ -226,13 +226,13 @@ namespace SharpLogger
 
                 // Remove the logger from the broker pool and
                 SharpLogBroker.DestroyLogger(this);
-                SharpLogBroker.Logger.WriteLog($"LOGGER {this.LoggerName} HAS BEEN REMOVED FROM OUR BROKER!", LogType.TraceLog);
+                SharpLogBroker.MasterLogger.WriteLog($"LOGGER {this.LoggerName} HAS BEEN REMOVED FROM OUR BROKER!", LogType.TraceLog);
             }
             catch (Exception DestroyLoggerEx)
             {
                 // Log the Exception out using the log broker logger
-                SharpLogBroker.Logger.WriteLog($"EXCEPTION THROWN DURING LOGGER REMOVAL PROCESS!", LogType.TraceLog);
-                SharpLogBroker.Logger.WriteException($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
+                SharpLogBroker.MasterLogger.WriteLog($"EXCEPTION THROWN DURING LOGGER REMOVAL PROCESS!", LogType.TraceLog);
+                SharpLogBroker.MasterLogger.WriteException($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
             }
         }
 
