@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Newtonsoft.Json;
 using NLog;
 using NLog.Config;
 using NLog.Layouts;
@@ -231,12 +232,12 @@ namespace SharpLogger
             {
                 // Log the Exception out using the log broker logger
                 SharpLogBroker.Logger.WriteLog($"EXCEPTION THROWN DURING LOGGER REMOVAL PROCESS!", LogType.TraceLog);
-                SharpLogBroker.Logger.WriteLog($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
+                SharpLogBroker.Logger.WriteException($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
             }
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
-        
+
         /// <summary>
         /// Writes our a log entry using the given message and log level
         /// </summary>
@@ -259,41 +260,13 @@ namespace SharpLogger
             using (this._nLogger.PushScopeProperties(ScopeProperties))
                 this._nLogger.Log(Level.ToNLevel(), LogMessage);
         }
-        /// <summary>
-        /// Writes an object of any kind out after calling the ToString method on it.
-        /// This splits the result of the ToString call and logs each line out accordingly
-        /// </summary>
-        /// <param name="ObjectToLog">The object we wish to log out</param>
-        /// <param name="Level">The level to log the object at</param>
-        public void WriteLog(object ObjectToLog, LogType Level = LogType.DebugLog)
-        {
-            // Make sure logging is not set to off right now
-            if (!this.LoggingEnabled) return;
 
-            // Configure a set of new scope properties for our output content log entries
-            var ScopeProperties = new KeyValuePair<string, object>[]
-            {
-                new("logger-class", this.LoggerClass),
-                new("calling-class", this._getCallingClass()),
-                new("calling-class-short", this._getCallingClass(true)),
-            };
-
-            // Convert the object to a string and split it out based on new line characters
-            string[] ObjectStrings = ObjectToLog.ToString()
-                .Split(new[] { "\n\r" }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(LogLine => !string.IsNullOrWhiteSpace(LogLine))
-                .ToArray();
-
-            // Using the built scope properties, write our log entries out to the targets now
-            using (this._nLogger.PushScopeProperties(ScopeProperties))
-                foreach (var ObjectString in ObjectStrings) this._nLogger.Log(Level.ToNLevel(), ObjectString);
-        }
         /// <summary>
         /// Writes an exceptions contents out to the logger
         /// </summary>
         /// <param name="LoggedEx">LoggedEx to write</param>
         /// <param name="Level">Level to log it</param>
-        public void WriteLog(Exception LoggedEx, LogType Level = LogType.ErrorLog)
+        public void WriteException(Exception LoggedEx, LogType Level = LogType.ErrorLog)
         {
             // Make sure logging is not set to off right now
             if (!this.LoggingEnabled) return;
@@ -320,7 +293,7 @@ namespace SharpLogger
                 {
                     // If our inner exception is not null, run it through this logger.
                     this._nLogger.Log(Level.ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
-                    this.WriteLog(LoggedEx.InnerException, Level);
+                    this.WriteException(LoggedEx.InnerException, Level);
                 }
             }
         }
@@ -330,7 +303,7 @@ namespace SharpLogger
         /// <param name="MessageExInfo">Info message</param>
         /// <param name="Ex">LoggedEx to write</param>
         /// <param name="LogLevels">Levels. Msg and then LoggedEx</param>
-        public void WriteLog(string MessageExInfo, Exception Ex, params LogType[] LogLevels)
+        public void WriteException(string MessageExInfo, Exception Ex, params LogType[] LogLevels)
         {
             // Check level count and make sure logging is set to on
             if (!this.LoggingEnabled) return;
@@ -360,7 +333,75 @@ namespace SharpLogger
 
                 // If our inner exception is not null, run it through this logger.
                 this._nLogger.Log(LogLevels[1].ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
-                this.WriteLog(MessageExInfo, Ex.InnerException, LogLevels);
+                this.WriteException(MessageExInfo, Ex.InnerException, LogLevels);
+            }
+        }
+
+        /// <summary>
+        /// Writes an object of any kind out after calling the ToString method on it.
+        /// This splits the result of the ToString call and logs each line out accordingly
+        /// </summary>
+        /// <param name="ObjectToLog">The object we wish to log out</param>
+        /// <param name="Level">The level to log the object at</param>
+        public void WriteObjectString(object ObjectToLog, LogType Level = LogType.DebugLog)
+        {
+            // Make sure logging is not set to off right now
+            if (!this.LoggingEnabled) return;
+
+            // Configure a set of new scope properties for our output content log entries
+            var ScopeProperties = new KeyValuePair<string, object>[]
+            {
+                new("logger-class", this.LoggerClass),
+                new("calling-class", this._getCallingClass()),
+                new("calling-class-short", this._getCallingClass(true)),
+            };
+
+            // Convert the object to a string and split it out based on new line characters
+            string[] ObjectStrings = ObjectToLog.ToString()
+                .Split(new[] { "\n\r" }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(LogLine => !string.IsNullOrWhiteSpace(LogLine))
+                .ToArray();
+
+            // Using the built scope properties, write our log entries out to the targets now
+            using (this._nLogger.PushScopeProperties(ScopeProperties))
+                foreach (var ObjectString in ObjectStrings) this._nLogger.Log(Level.ToNLevel(), ObjectString);
+        }
+        /// <summary>
+        /// Writes an object of any kind out as a JSON string to the log file
+        /// </summary>
+        /// <param name="ObjectToLog">The object we need to write out to our log file</param>
+        /// <param name="UseTabs">When true, the output json string will be tab formatted</param>
+        /// <param name="Level">The level to log the object at</param>
+        public void WriteObjectJson(object ObjectToLog, bool UseTabs = true, LogType Level = LogType.DebugLog)
+        {
+            // Make sure logging is not set to off right now
+            if (!this.LoggingEnabled) return;
+
+            // Configure a set of new scope properties for our output content log entries
+            var ScopeProperties = new KeyValuePair<string, object>[]
+            {
+                new("logger-class", this.LoggerClass),
+                new("calling-class", this._getCallingClass()),
+                new("calling-class-short", this._getCallingClass(true)),
+            };
+
+            // Convert the object to a string and split it out based on new line characters if we're using JSON tabs
+            string ObjectString = JsonConvert.SerializeObject(ObjectToLog, UseTabs ? Formatting.Indented : Formatting.None);
+            using (this._nLogger.PushScopeProperties(ScopeProperties))
+            {
+                // If not using tab formatting, then just write the string out
+                if (!UseTabs) this._nLogger.Log(Level.ToNLevel(), ObjectString);
+                else
+                {
+                    // Split the JSON content into a set of strings and log them all out
+                    string[] ObjectStrings = ObjectString
+                        .Split(new[] { "\n\r" }, StringSplitOptions.RemoveEmptyEntries)
+                        .ToArray();
+
+                    // Log each of the log lines out using the class NLogger
+                    foreach (var ObjectJsonString in ObjectStrings)
+                        this._nLogger.Log(Level.ToNLevel(), ObjectJsonString);
+                }
             }
         }
 
