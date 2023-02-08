@@ -121,7 +121,7 @@ namespace SharpLogger
             {
                 // Remove the master logger from our queue first
                 if (_masterLogger != null) DestroyLogger(_masterLogger);
-                _masterLogger = null; _masterLogger = value;
+                _masterLogger = value;
             }
         }
         public static SharpLogger[] LoggerPool
@@ -176,9 +176,17 @@ namespace SharpLogger
 
             // Private properties used to help build JSON configuration objects for logging levels
             [JsonProperty("MinLogLevel", DefaultValueHandling = DefaultValueHandling.Populate)]
-            private string _minLoggingLevel => MinLogLevel.ToString();
+            private string _minLogLevel
+            {
+                get => MinLogLevel.ToString();
+                set => MinLogLevel = (LogType)Enum.Parse(typeof(LogType), value);
+            }
             [JsonProperty("MaxLogLevel", DefaultValueHandling = DefaultValueHandling.Populate)]
-            private string _compressionStyle => MaxLogLevel.ToString();
+            private string _maxLogLevel
+            {
+                get => MaxLogLevel.ToString();
+                set => MaxLogLevel = (LogType)Enum.Parse(typeof(LogType), value);
+            }
 
             #endregion //Properties
 
@@ -205,16 +213,19 @@ namespace SharpLogger
             // Build the output string to return based on properties
             string OutputString =
                 $"Log Broker Information - {LogBrokerName} - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
-                $"\t\\__ Creation Time:  {_brokerCreated:g}\n" +
-                $"\t\\__ Logging State:  {(LoggingEnabled ? "Logging Currently ON" : "Logging Currently OFF")}\n" +
-                $"\t\\__ Min Log Level:  {MinLevel} (NLevel: {_minLevel})\n" +
-                $"\t\\__ Max Log Level:  {MaxLevel} (NLevel: {_maxLevel})\n" +
-                $"\t\\__ Log File Name:  {LogFileName}\n" +
-                $"\t\\__ Log File Path:  {LogFilePath}\n" +
+                $"\t\\__ Creation Time:   {_brokerCreated:g}\n" +
+                $"\t\\__ Logging State:   {(LoggingEnabled ? "Logging Currently ON" : "Logging Currently OFF")}\n" +
+                $"\t\\__ Min Log Level:   {MinLevel} (NLevel: {_minLevel})\n" +
+                $"\t\\__ Max Log Level:   {MaxLevel} (NLevel: {_maxLevel})\n" +
+                $"\t\\__ Log File Name:   {LogFileName}\n" +
+                $"\t\\__ Log File Path:   {LogFilePath}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length == 1 ? string.Empty : "s")} constructed\n" +
-                $"\t\\__ Master Logger:  {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n";
- 
+                $"\t\\__ Loggers Built:   {LoggerPool.Length} Logger{(LoggerPool.Length == 1 ? string.Empty : "s")} constructed\n" +
+                $"\t\\__ Master Logger:   {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
+                $"\t\\__ Broker Config:   {JsonConvert.SerializeObject(LogBrokerConfig)}\n" +
+                $"\t\\__ Archive Config:  {JsonConvert.SerializeObject(LogArchiveConfig)}";
+
             // Return this built output string here
             return OutputString;
         }
@@ -233,7 +244,11 @@ namespace SharpLogger
             _brokerCreated = DateTime.Now;
             LogBrokerConfig = BrokerConfig;
             LogArchiveConfig = ArchiveConfig;
-            LogBrokerName = BrokerConfig.LogBrokerName;
+            LogBrokerName = string.IsNullOrWhiteSpace(BrokerConfig.LogBrokerName)
+                ? Assembly.GetExecutingAssembly().FullName
+                    .Split(' ').FirstOrDefault()
+                    ?.Replace(",", string.Empty).Trim()
+                : BrokerConfig.LogBrokerName;
 
             // Check our logging level values provided in our configurations and see what needs to be updated
             if ((int)BrokerConfig.MinLogLevel == 6 && (int)BrokerConfig.MaxLogLevel == 6) LoggingEnabled = false;
@@ -255,9 +270,8 @@ namespace SharpLogger
                     : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName)}_{LoggerTime}.{Path.GetExtension(BrokerConfig.LogFileName)}";
                 
                 // Build the full path based on the default output location and the log file name pulled in
-                LogFilePath = Path.Combine(_defaultOutputPath, LogFileName);
-                if (!Directory.Exists(_defaultOutputPath)) 
-                    Directory.CreateDirectory(_defaultOutputPath);
+                LogFilePath = Path.Combine(_defaultOutputPath, LogFileName).Replace("\\\\", "\\").Trim();
+                if (!Directory.Exists(_defaultOutputPath)) Directory.CreateDirectory(_defaultOutputPath);
             }
             else
             {
@@ -272,7 +286,9 @@ namespace SharpLogger
                 {
                     // If we found an actual file for the input path, we know that's the final result
                     LogFileName = Path.GetFileName(BrokerConfig.LogFilePath);
-                    LogFilePath = BrokerConfig.LogFilePath.Replace(LogFileName, string.Empty).Trim();
+                    LogFilePath = BrokerConfig.LogFilePath
+                        .Replace("\\\\", "\\")
+                        .Trim();
                 }
                 else if ((Directory.Exists(BrokerConfig.LogFilePath) || EndsWithDirChars) && !Path.HasExtension(BrokerConfig.LogFilePath))
                 {
@@ -283,19 +299,19 @@ namespace SharpLogger
                         : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName)}_{LoggerTime}.{Path.GetExtension(BrokerConfig.LogFileName)}";
 
                     // Build the full path based on the default output location and the log file name pulled in
-                    LogFilePath = Path.Combine(BrokerConfig.LogFilePath, LogFileName);
-                    if (!Directory.Exists(BrokerConfig.LogFilePath))
-                        Directory.CreateDirectory(BrokerConfig.LogFilePath);
+                    LogFilePath = Path.Combine(BrokerConfig.LogFilePath, LogFileName).Replace("\\\\", "\\").Trim();
+                    if (!Directory.Exists(BrokerConfig.LogFilePath)) Directory.CreateDirectory(BrokerConfig.LogFilePath);
                 }
                 else if (Path.HasExtension(BrokerConfig.LogFilePath) && !EndsWithDirChars)
                 {
                     // If the path provided is an actual file name that isn't real, build a path for it
-                    LogFilePath = BrokerConfig.LogFilePath;
                     LogFileName = Path.GetFileName(BrokerConfig.LogFilePath);
+                    LogFilePath = BrokerConfig.LogFilePath
+                        .Replace("\\\\", "\\")
+                        .Trim();
 
                     // Make sure the path exists now before moving on
-                    if (!Directory.Exists(_defaultOutputPath))
-                        Directory.CreateDirectory(_defaultOutputPath);
+                    if (!Directory.Exists(LogFilePath)) Directory.CreateDirectory(LogFilePath);
                 }
                 else
                 {
@@ -304,6 +320,13 @@ namespace SharpLogger
                     throw new ArgumentException($"Error! Broker configuration could not be used to setup logging! ({ArgNameAndValue})");
                 }
             }
+
+            // Update our configuration to reflect the newly determined values for files
+            _logBrokerConfig.MaxLogLevel = MaxLevel;
+            _logBrokerConfig.MinLogLevel = MinLevel;
+            _logBrokerConfig.LogFileName = LogFileName;
+            _logBrokerConfig.LogFilePath = LogFilePath;
+            _logBrokerConfig.LogBrokerName = LogBrokerName;
 
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             MasterLogger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
@@ -390,16 +413,15 @@ namespace SharpLogger
             lock (_loggerPool)
             {
                 // Find existing loggers that may have the same name as this logger obj.
-                if (_loggerPool.Any(LogObj => LogObj.LoggerGuid == LoggerItem.LoggerGuid))
+                if (_loggerPool.All(LogObj => LogObj.LoggerGuid != LoggerItem.LoggerGuid)) _loggerPool.Add(LoggerItem);
+                else
                 {
-                    // Update current.
+                    // Update a logger where this GUID existed already.
                     int IndexOfExisting = _loggerPool.IndexOf(LoggerItem);
                     _loggerPool[IndexOfExisting] = LoggerItem;
-                    return false;
                 }
 
-                // If the logger didn't get added (no dupes) do it not.
-                _loggerPool.Add(LoggerItem);
+                // Return out based on if the logger is found in our pool or not
                 return _loggerPool.Contains(LoggerItem);
             }
         }
@@ -414,16 +436,9 @@ namespace SharpLogger
             _loggerPool ??= new List<SharpLogger>();
             lock (_loggerPool)
             {
-                // Pull out all the dupes.
-                var NewLoggers = _loggerPool.Where(LogObj =>
-                    LogObj.LoggerGuid != LoggerItem.LoggerGuid).ToList();
-
-                // Check if new logger is in loggers filtered or not and store it.
-                if (NewLoggers.Contains(LoggerItem)) NewLoggers.Remove(LoggerItem);
-                _loggerPool = NewLoggers;
-
-                // Return based on if logger was removed or not
-                return !_loggerPool.Contains(LoggerItem);
+                // Remove this logger object from our pool and move on
+                bool Removed = _loggerPool.Remove(LoggerItem);
+                return Removed;
             }
         }
 

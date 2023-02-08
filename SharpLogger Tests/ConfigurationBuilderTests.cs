@@ -28,6 +28,13 @@ namespace SharpLogger_Tests
             {
                 ""BrokerConfigStrings"": [ 
                     { 
+                        ""LogBrokerName"": """",
+                        ""LogFilePath"": null, 
+                        ""LogFileName"": null,
+                        ""MinLogLevel"": ""TraceLog"",
+                        ""MaxLogLevel"": ""FatalLog""
+                    },                    
+                    { 
                         ""LogBrokerName"": ""SharpLoggerTests"",
                         ""LogFilePath"": null, 
                         ""LogFileName"": null,

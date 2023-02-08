@@ -49,7 +49,7 @@ namespace SharpLogger_Tests
             foreach (var BrokerConfiguration in ConfigBuilder.BrokerConfigs) {
                 foreach (var ArchiveConfiguration in ConfigBuilder.ArchiveConfigs) {
                     Assert.IsTrue(SharpLogBroker.InitializeLogging(BrokerConfiguration, ArchiveConfiguration));
-                    Console.WriteLine(SharpLogBroker.ToString());
+                    Console.WriteLine(SharpLogBroker.ToString() + "\n");
                     LoggerTestHelpers.SeparateConsole();
                 }
             }
