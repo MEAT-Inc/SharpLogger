@@ -63,11 +63,6 @@ namespace SharpLogger
             get => _logBrokerConfig;
             internal set => _logBrokerConfig = value;
         }
-        public static ArchiveConfiguration LogArchiveConfig
-        {
-            get => _logArchiveConfig;
-            internal set => _logArchiveConfig = value;
-        }
 
         // Public facing properties holding configuration for our logging levels and master enabled value
         public static LogType MinLevel
@@ -198,16 +193,7 @@ namespace SharpLogger
             /// <summary>
             /// Builds a new default configuration for a Log broker setup structure
             /// </summary>
-            public BrokerConfiguration()
-            {
-                // Make sure we've got a valid log broker configuration value built out
-                if (string.IsNullOrWhiteSpace(this.LogBrokerName))
-                    this.LogBrokerName = "SharpLogging";
-                if (string.IsNullOrWhiteSpace(this.LogFileName))
-                    this.LogFileName = $"SharpLogging_{DateTime.Now.ToString("MMddyyy-HHmmss")}.log";
-                if (string.IsNullOrWhiteSpace(this.LogFilePath))
-                    this.LogFilePath = Path.Combine(_defaultOutputPath, this.LogFileName);
-            }
+            public BrokerConfiguration() { }
         }
 
         #endregion //Structs and Classes
@@ -232,32 +218,22 @@ namespace SharpLogger
                 $"\t\\__ Loggers Built:   {LoggerPool.Length} Logger{(LoggerPool.Length == 1 ? string.Empty : "s")} constructed\n" +
                 $"\t\\__ Master Logger:   {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Broker Config:   {JsonConvert.SerializeObject(LogBrokerConfig)}\n" +
-                $"\t\\__ Archive Config:  {JsonConvert.SerializeObject(LogArchiveConfig)}";
+                $"\t\\__ Broker Config:   {JsonConvert.SerializeObject(LogBrokerConfig)}";
 
             // Return this built output string here
             return OutputString;
         }
-
-        // ------------------------------------------------------------------------------------------------------------------------------------------
-
         /// <summary>
         /// Configures a new instance of a log broker for logging configuration/output for an application
         /// When a name of a file is provided to output file path, the name of the log file is used
         /// </summary>
         /// <param name="BrokerConfig">The broker configuration to use for building a new logging session</param>
         /// <param name="ArchiveConfig">An optional archive configuration object we use to setup default archive configurations</param>
-        public static bool InitializeLogging(BrokerConfiguration BrokerConfig, ArchiveConfiguration ArchiveConfig = default)
+        public static bool InitializeLogging(BrokerConfiguration BrokerConfig)
         {
             // Start by storing new configuration values for the log broker and archiver configurations
             _brokerCreated = DateTime.Now;
             LogBrokerConfig = BrokerConfig;
-            LogArchiveConfig = ArchiveConfig;
-            LogBrokerName = string.IsNullOrWhiteSpace(BrokerConfig.LogBrokerName)
-                ? Assembly.GetExecutingAssembly().FullName
-                    .Split(' ').FirstOrDefault()
-                    ?.Replace(",", string.Empty).Trim()
-                : BrokerConfig.LogBrokerName;
 
             // Check our logging level values provided in our configurations and see what needs to be updated
             if ((int)BrokerConfig.MinLogLevel == 6 && (int)BrokerConfig.MaxLogLevel == 6) LoggingEnabled = false;
@@ -343,34 +319,7 @@ namespace SharpLogger
             MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!", LogType.InfoLog);
             MasterLogger.WriteLog(SharpLogBroker.ToString(), LogType.TraceLog);
 
-            // Finally, spin up a task to attempt our archive routine based on the archive configuration provided
-            if (ArchiveConfig.IsDefaultConfig) return true; 
-
-            // Log archive routine is being invoked since a configuration was provided and run it
-            MasterLogger.WriteLog("A LOG ARCHIVE CONFIGURATION WAS PROVIDED IN THIS CALL! ARCHIVING IN A BACKGROUND THREAD NOW...", LogType.WarnLog);
-            MasterLogger.WriteLog("ARCHIVE CONFIGURATION IS BEING SHOWN BELOW:", LogType.TraceLog);
-            MasterLogger.WriteObjectJson(ArchiveConfig, true, LogType.TraceLog);
-            Task.Run(() =>
-            {
-                // Run the archive routine and log an exception if it fails
-                string ArchiverName = $"{LogBrokerName}_Archiver";
-                SharpLogArchiver ArchiveHelper = new SharpLogArchiver(ArchiverName, LogArchiveConfig);
-
-                // Spawn a new archive helper object and perform an archive routine based on the configuration provided
-                bool ArchivePassed = ArchiveHelper.ArchiveLogFiles();
-                bool CleanupPassed = ArchiveHelper.CleanupArchiveHistory();
-
-                // Return and log based on the results of this archive routine
-                MasterLogger.WriteLog("ARCHIVE ROUTINE COMPLETE! RESULTS ARE BEING LOGGED BELOW", LogType.InfoLog);
-                MasterLogger.WriteLog(
-                    $"--> ARCHIVE STATUS: {(ArchivePassed ? "ARCHIVE ROUTINE PASSED!" : "ARCHIVE ROUTINE FAILED!")}",
-                    ArchivePassed ? LogType.InfoLog : LogType.ErrorLog);
-                MasterLogger.WriteLog(
-                    $"--> CLEANUP STATUS: {(CleanupPassed ? "CLEANUP ROUTINE PASSED!" : "CLEANUP ROUTINE FAILED!")}",
-                    ArchivePassed ? LogType.InfoLog : LogType.ErrorLog);
-            });
-
-            // Return true once this archive routine is booted up and ready to run
+            // Return true once this btoker instance booted up and ready to run
             return true;
         }
 
