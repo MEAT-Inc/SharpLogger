@@ -135,12 +135,12 @@ namespace SharpLogger
         // Public facing properties holding our configurations for format output strings
         public SharpFileTargetFormat FileTargetFormat
         {
-            get => this._fileLoggerFormat ?? SharpLogBroker.DefaultFileFormat;
+            get => this._fileLoggerFormat ??= SharpLogBroker.DefaultFileFormat;
             set => this._fileLoggerFormat = value;
         }
         public SharpConsoleTargetFormat ConsoleTargetFormat
         {
-            get => this._consoleLoggerFormat ?? SharpLogBroker.DefaultConsoleFormat;
+            get => this._consoleLoggerFormat ??= SharpLogBroker.DefaultConsoleFormat;
             set => this._consoleLoggerFormat = value;
         }
 
@@ -150,10 +150,11 @@ namespace SharpLogger
             get => this._loggerType;
             set => this.SetField(ref this._loggerType, value);
         }
-        public bool IsFileLogger => this._loggerType.HasFlag(LoggerActions.FileLogger);
         public bool IsAsyncLogger => this._loggerType.HasFlag(LoggerActions.AsyncLogger);
-        public bool IsConsoleLogger => this._loggerType.HasFlag(LoggerActions.ConsoleLogger);
-        
+        public bool IsUniversalLogger => this._loggerType.HasFlag(LoggerActions.UniversalLogger);
+        public bool IsFileLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.FileLogger);
+        public bool IsConsoleLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.ConsoleLogger);
+
         #endregion //Properties
 
         #region Structs and Classes
@@ -164,11 +165,11 @@ namespace SharpLogger
         /// <summary>
         /// Builds a new FalconLogger object and adds it to the logger pool.
         /// </summary>
-        /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
         /// <param name="LoggerType">Type of actions/targets to configure for this logger</param>
         /// <param name="MinLevel">Min Log Level for output values being written</param>
         /// <param name="MaxLevel">Max Log Level for output values being written</param>
-        public SharpLogger(LoggerActions LoggerType, [CallerMemberName] string LoggerName = "", LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog)
+        /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
+        public SharpLogger(LoggerActions LoggerType, LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog, string LoggerName = "")
         {
             // Set Min and Max logging levels and make sure they comply with the logging broker
             this.MinLevel = SharpLogBroker.MinLevel == LogType.NoLogging
@@ -187,7 +188,11 @@ namespace SharpLogger
             this.LoggerClass = LoggerName;
             this.TimeCreated = DateTime.Now;
             this.LoggerGuid = Guid.NewGuid();
-            this.LoggerName = $"{LoggerName}_{LoggerGuid.ToString("D").ToUpper()}";
+
+            // Store new name value for the logger based on the provided input value
+            LoggerName = string.IsNullOrWhiteSpace(LoggerName)
+                ? this._getCallingClass(true) : LoggerName;
+            this.LoggerName =  $"{LoggerName}_{LoggerGuid.ToString("D").ToUpper()}";
 
             // Configure new logger targets based on the type of this logger
             LogManager.Configuration ??= new LoggingConfiguration();
@@ -198,14 +203,15 @@ namespace SharpLogger
             this._asyncWrappers = new List<AsyncTargetWrapper>();
 
             // Now store new targets for these loggers based on the types provided
-            if (this.IsFileLogger) this._spawnFileTarget();
-            if (this.IsConsoleLogger) this._spawnConsoleTarget();
+            if (this.IsFileLogger || this.IsUniversalLogger) this._spawnFileTarget();
+            if (this.IsConsoleLogger || this.IsUniversalLogger) this._spawnConsoleTarget();
 
             // Print out some logger information values and store this logger in our broker pool
             this.WriteLog($"LOGGER NAME: {this.LoggerName} HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
-            this.WriteLog($"--> IS ASYNC:      {(this.IsAsyncLogger ? "YES" : "NO")}", LogType.TraceLog);
             this.WriteLog($"--> TIME CREATED:  {this.TimeCreated:G}", LogType.TraceLog);
             this.WriteLog($"--> LOGGER GUID:   {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
+            this.WriteLog($"--> IS ASYNC:      {(this.IsAsyncLogger ? "YES" : "NO")}", LogType.TraceLog);
+            this.WriteLog($"--> IS UNIVERSAL:  {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
             this.WriteLog($"--> TARGET COUNT:  {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
@@ -258,7 +264,21 @@ namespace SharpLogger
             
             // Using the built scope properties, write our log entries out to the targets now
             using (this._nLogger.PushScopeProperties(ScopeProperties))
-                this._nLogger.Log(Level.ToNLevel(), LogMessage);
+            {
+                // Check to see if we've got new line splits in the log message.
+                if (!LogMessage.Contains("\r") && !LogMessage.Contains("\n")) this._nLogger.Log(Level.ToNLevel(), LogMessage);
+                else 
+                {
+                    // Split the log message contents into an array and print them out
+                    string[] SplitLogMessages = LogMessage
+                        .Split(new[] { "\n\r" }, StringSplitOptions.None)
+                        .ToArray();
+
+                    // Log each of the log lines out using the class NLogger
+                    foreach (var MessageString in SplitLogMessages)
+                        this._nLogger.Log(Level.ToNLevel(), MessageString);
+                }
+            }
         }
 
         /// <summary>
@@ -338,35 +358,6 @@ namespace SharpLogger
         }
 
         /// <summary>
-        /// Writes an object of any kind out after calling the ToString method on it.
-        /// This splits the result of the ToString call and logs each line out accordingly
-        /// </summary>
-        /// <param name="ObjectToLog">The object we wish to log out</param>
-        /// <param name="Level">The level to log the object at</param>
-        public void WriteObjectString(object ObjectToLog, LogType Level = LogType.DebugLog)
-        {
-            // Make sure logging is not set to off right now
-            if (!this.LoggingEnabled) return;
-
-            // Configure a set of new scope properties for our output content log entries
-            var ScopeProperties = new KeyValuePair<string, object>[]
-            {
-                new("logger-class", this.LoggerClass),
-                new("calling-class", this._getCallingClass()),
-                new("calling-class-short", this._getCallingClass(true)),
-            };
-
-            // Convert the object to a string and split it out based on new line characters
-            string[] ObjectStrings = ObjectToLog.ToString()
-                .Split(new[] { "\n\r" }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(LogLine => !string.IsNullOrWhiteSpace(LogLine))
-                .ToArray();
-
-            // Using the built scope properties, write our log entries out to the targets now
-            using (this._nLogger.PushScopeProperties(ScopeProperties))
-                foreach (var ObjectString in ObjectStrings) this._nLogger.Log(Level.ToNLevel(), ObjectString);
-        }
-        /// <summary>
         /// Writes an object of any kind out as a JSON string to the log file
         /// </summary>
         /// <param name="ObjectToLog">The object we need to write out to our log file</param>
@@ -395,7 +386,7 @@ namespace SharpLogger
                 {
                     // Split the JSON content into a set of strings and log them all out
                     string[] ObjectStrings = ObjectString
-                        .Split(new[] { "\n\r" }, StringSplitOptions.RemoveEmptyEntries)
+                        .Split(new[] { "\n\r" }, StringSplitOptions.None)
                         .ToArray();
 
                     // Log each of the log lines out using the class NLogger
@@ -408,9 +399,47 @@ namespace SharpLogger
         // ------------------------------------------------------------------------------------------------------------------------------------------
 
         /// <summary>
-        /// Spawns a new ColoredConsoleTarget for this logger instance
+        /// Spawns a new FileTarget for this logger instance
         /// </summary>
         /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
+        private FileTarget _spawnFileTarget()
+        {
+            // Find the name of the log file we're writing into first
+            string LogFileName = Path.GetFileNameWithoutExtension(SharpLogBroker.LogFilePath);
+            string FileTargetName = $"{this.LoggerName}_{LogFileName}";
+
+            // Build the new file target for our logger instance
+            var FileLoggerTarget = new FileTarget(FileTargetName);
+            FileLoggerTarget.KeepFileOpen = false;
+            FileLoggerTarget.MaxArchiveFiles = 20;
+            FileLoggerTarget.ConcurrentWrites = true;
+            FileLoggerTarget.ArchiveAboveSize = 1953125;
+            FileLoggerTarget.ArchiveEvery = FileArchivePeriod.Day;
+            FileLoggerTarget.FileName = SharpLogBroker.LogFilePath;
+            FileLoggerTarget.ArchiveNumbering = ArchiveNumberingMode.DateAndSequence;
+            FileLoggerTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
+            FileLoggerTarget.ArchiveFileName = "${basedir}/LogArchives/" + SharpLogBroker.LogBrokerName + ".{####}.log";
+
+            // Register the new console logger target in the log manager configuration
+            this._loggerTargets.Add(FileLoggerTarget);
+            LogManager.Configuration.AddTarget(FileLoggerTarget);
+
+            // If the logger is async, then spawn an async target too and store it on this instance
+            if (this.IsAsyncLogger)
+            {
+                // Spawn the async target and store it on our instance
+                var AsyncConsoleTarget = this._convertToAsyncTarget(FileLoggerTarget);
+                this._asyncWrappers.Add(AsyncConsoleTarget);
+                LogManager.Configuration.AddTarget(AsyncConsoleTarget);
+            }
+
+            // Now return the built file logging target and exit out
+            return FileLoggerTarget;
+        }
+        /// <summary>
+                 /// Spawns a new ColoredConsoleTarget for this logger instance
+                 /// </summary>
+                 /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
         private ColoredConsoleTarget _spawnConsoleTarget()
         {
             // Make Logger and set format.
@@ -459,46 +488,7 @@ namespace SharpLogger
             // Now return the built console logging target and exit out
             return ConsoleLoggerTarget;
         }
-        /// <summary>
-        /// Spawns a new FileTarget for this logger instance
-        /// </summary>
-        /// <param name="LogFilePath">An optional path to a log file we wish to write out to</param>
-        /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
-        private FileTarget _spawnFileTarget(string LogFilePath = null)
-        {
-            // Find the name of the log file we're writing into first
-            LogFilePath ??= SharpLogBroker.LogFileName;
-            string LogFileName = Path.GetFileNameWithoutExtension(LogFilePath);
-            string FileTargetName = $"{this.LoggerName}_{LogFileName}";
-
-            // Build the new file target for our logger instance
-            var FileLoggerTarget = new FileTarget(FileTargetName);
-            FileLoggerTarget.KeepFileOpen = false;
-            FileLoggerTarget.MaxArchiveFiles = 20;
-            FileLoggerTarget.ConcurrentWrites = true;
-            FileLoggerTarget.FileName = LogFilePath;
-            FileLoggerTarget.ArchiveAboveSize = 1953125;
-            FileLoggerTarget.ArchiveEvery = FileArchivePeriod.Day;
-            FileLoggerTarget.ArchiveNumbering = ArchiveNumberingMode.DateAndSequence;
-            FileLoggerTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
-            FileLoggerTarget.ArchiveFileName = "${basedir}/LogArchives/" + SharpLogBroker.LogBrokerName + ".{####}.log";
-
-            // Register the new console logger target in the log manager configuration
-            this._loggerTargets.Add(FileLoggerTarget);
-            LogManager.Configuration.AddTarget(FileLoggerTarget);
-
-            // If the logger is async, then spawn an async target too and store it on this instance
-            if (this.IsAsyncLogger)
-            {
-                // Spawn the async target and store it on our instance
-                var AsyncConsoleTarget = this._convertToAsyncTarget(FileLoggerTarget);
-                this._asyncWrappers.Add(AsyncConsoleTarget);
-                LogManager.Configuration.AddTarget(AsyncConsoleTarget);
-            }
-
-            // Now return the built file logging target and exit out
-            return FileLoggerTarget;
-        }
+       
         /// <summary>
         /// Wraps a built logging target into an async target instance and returns it out
         /// </summary>
