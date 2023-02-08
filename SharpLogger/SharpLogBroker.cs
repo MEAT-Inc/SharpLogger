@@ -208,17 +208,17 @@ namespace SharpLogger
             // Build the output string to return based on properties
             string OutputString =
                 $"Log Broker Information - {LogBrokerName} - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
-                $"\t\\__ Creation Time:   {_brokerCreated:g}\n" +
-                $"\t\\__ Logging State:   {(LoggingEnabled ? "Logging Currently ON" : "Logging Currently OFF")}\n" +
-                $"\t\\__ Min Log Level:   {MinLevel} (NLevel: {_minLevel})\n" +
-                $"\t\\__ Max Log Level:   {MaxLevel} (NLevel: {_maxLevel})\n" +
-                $"\t\\__ Log File Name:   {LogFileName}\n" +
-                $"\t\\__ Log File Path:   {LogFilePath}\n" +
+                $"\t\\__ Creation Time:  {_brokerCreated:g}\n" +
+                $"\t\\__ Logging State:  {(LoggingEnabled ? "Logging Currently ON" : "Logging Currently OFF")}\n" +
+                $"\t\\__ Min Log Level:  {MinLevel} (NLevel: {_minLevel})\n" +
+                $"\t\\__ Max Log Level:  {MaxLevel} (NLevel: {_maxLevel})\n" +
+                $"\t\\__ Log File Name:  {LogFileName}\n" +
+                $"\t\\__ Log File Path:  {LogFilePath}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Loggers Built:   {LoggerPool.Length} Logger{(LoggerPool.Length == 1 ? string.Empty : "s")} constructed\n" +
-                $"\t\\__ Master Logger:   {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
+                $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length != 1 ? "s": string.Empty)} Constructed\n" +
+                $"\t\\__ Master Logger:  {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Broker Config:   {JsonConvert.SerializeObject(LogBrokerConfig)}";
+                $"\t\\__ Broker Config (JSON):  {JsonConvert.SerializeObject(LogBrokerConfig)}";
 
             // Return this built output string here
             return OutputString;
@@ -234,6 +234,11 @@ namespace SharpLogger
             // Start by storing new configuration values for the log broker and archiver configurations
             _brokerCreated = DateTime.Now;
             LogBrokerConfig = BrokerConfig;
+            LogBrokerName = string.IsNullOrWhiteSpace(BrokerConfig.LogBrokerName)
+                ? Assembly.GetExecutingAssembly()
+                    .FullName.Split(' ').FirstOrDefault()
+                    ?.Replace(",", string.Empty).Trim()
+                : BrokerConfig.LogBrokerName;
 
             // Check our logging level values provided in our configurations and see what needs to be updated
             if ((int)BrokerConfig.MinLogLevel == 6 && (int)BrokerConfig.MaxLogLevel == 6) LoggingEnabled = false;
@@ -243,15 +248,10 @@ namespace SharpLogger
             // Now find our output log file path/name value and create the logging output file
             if (string.IsNullOrWhiteSpace(BrokerConfig.LogFilePath))
             {
-                // Get the documents path folder and store our base output file here
-                string LoggerTime = DateTime.Now.ToString("MMddyyy-HHmmss");
-                string ExecutingName = Assembly.GetExecutingAssembly()
-                    .FullName.Split(' ').FirstOrDefault()
-                    ?.Replace(",", string.Empty).Trim() ?? LogBrokerName;
-
                 // Store our new log file path value and exit out once stored since we now have a logging path
+                string LoggerTime = DateTime.Now.ToString("MMddyyy-HHmmss");
                 LogFileName = string.IsNullOrWhiteSpace(BrokerConfig.LogFileName)
-                    ?  $"{ExecutingName}_Logging_{LoggerTime}.log"
+                    ?  $"{LogBrokerName}_Logging_{LoggerTime}.log"
                     : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName)}_{LoggerTime}.{Path.GetExtension(BrokerConfig.LogFileName)}";
                 
                 // Build the full path based on the default output location and the log file name pulled in
@@ -314,7 +314,7 @@ namespace SharpLogger
             _logBrokerConfig.LogBrokerName = LogBrokerName;
 
             // Spawn a new SharpLogger which will use our master logger instance to write log output
-            MasterLogger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
+            MasterLogger = new SharpLogger(LoggerActions.UniversalLogger);
             MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
             MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!", LogType.InfoLog);
             MasterLogger.WriteLog(SharpLogBroker.ToString(), LogType.TraceLog);

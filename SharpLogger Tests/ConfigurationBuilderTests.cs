@@ -28,7 +28,7 @@ namespace SharpLogger_Tests
             {
                 ""BrokerConfigStrings"": [ 
                     { 
-                        ""LogBrokerName"": """",
+                        ""LogBrokerName"": null,
                         ""LogFilePath"": null, 
                         ""LogFileName"": null,
                         ""MinLogLevel"": ""TraceLog"",
@@ -78,9 +78,9 @@ namespace SharpLogger_Tests
                         ""SearchPath"": null,
                         ""ArchivePath"": null,
                         ""ArchiveFileFilter"": ""SharpLoggerTests*.log"",
-                        ""ArchiveFileSetSize"": 0,
-                        ""ArchiveOnFileCount"": 0,
-                        ""ArchiveCleanupFileCount"": 0,
+                        ""ArchiveFileSetSize"": -10,
+                        ""ArchiveOnFileCount"": 30,
+                        ""ArchiveCleanupFileCount"": 100,
                         ""CompressionLevel"": null,
                         ""CompressionStyle"": null, 
                     }, 

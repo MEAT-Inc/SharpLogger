@@ -69,7 +69,7 @@ namespace SharpLogger
         // Private logger instance and backing archive configuration
         private static SharpLogger _archiveLogger;                                 // SharpLogger instance used to write information about archiving
         private static ArchiveConfiguration _logArchiveConfig;                     // Configuration to track how to archive our output files
-        
+
         // Private backing fields for archive configuration values
         private static Stopwatch _archiveTimer;                                    // Timer to track archive routine execution time
         private static DateTime _archiverCreated;                                  // The time our archiver instance was built
@@ -104,9 +104,6 @@ namespace SharpLogger
             #region Fields
 
             // Public facing field for the archive location and the location to search
-            [DefaultValue("SharpLoggerArchvies")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string ArchiverName = "SharpLoggerArchives";
             [DefaultValue(SharpLogBroker._defaultOutputPath)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public string SearchPath = SharpLogBroker._defaultOutputPath;
@@ -116,7 +113,7 @@ namespace SharpLogger
 
             // The default file filtering name value for an archive configuration
             [DefaultValue("*.*")] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string ArchiveFileFilter = "*.*";
+            public string ArchiveFileFilter = $"{SharpLogBroker.LogBrokerName}.*";
 
             // Public facing fields for configuring a log archive session
             [DefaultValue(15)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
@@ -221,16 +218,19 @@ namespace SharpLogger
         {
             // Build the output string to return based on properties
             string OutputString =
-                $"Log Archiver Information - {LogArchiveConfig.ArchiverName} - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"Log Archiver Information - {SharpLogBroker.LogBrokerName} (Archives) - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Creation Time:   {_archiverCreated:g}\n" +
-                $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} file{(LogArchiveConfig.ArchiveFileSetSize == 1 ? "s" : string.Empty)}\n" +
-                $"\t\\__ Trigger Count:   {LogArchiveConfig.ArchiveOnFileCount} file{(LogArchiveConfig.ArchiveOnFileCount == 1 ? "s" : string.Empty)}\n" +
-                $"\t\\__ Max Archives:    {LogArchiveConfig.ArchiveCleanupFileCount} archive{(LogArchiveConfig.ArchiveCleanupFileCount == 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} file{(LogArchiveConfig.ArchiveFileSetSize != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Trigger Count:   {LogArchiveConfig.ArchiveOnFileCount} file{(LogArchiveConfig.ArchiveOnFileCount != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Max Archives:    {LogArchiveConfig.ArchiveCleanupFileCount} archive{(LogArchiveConfig.ArchiveCleanupFileCount != 1 ? "s" : string.Empty)}\n" +
                 $"\t\\__ Search Filter:   {LogArchiveConfig.ArchiveFileFilter}\n" +
                 $"\t\\__ Search Path:     {LogArchiveConfig.SearchPath}\n" +
                 $"\t\\__ Archive Path:    {LogArchiveConfig.ArchivePath}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Archiver Config:   {JsonConvert.SerializeObject(LogArchiveConfig)}";
+                $"\t\\__ Archive Logger:  {_archiveLogger.LoggerName}\n" + 
+                $"\t\\__ Logger Targets:  {_archiveLogger.LoggerType}\n" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
+                $"\t\\__ Archiver Config (JSON):  {JsonConvert.SerializeObject(LogArchiveConfig)}";
 
             // Return this built output string here
             return OutputString;
@@ -253,16 +253,18 @@ namespace SharpLogger
             _archiveZipOutputs = new Dictionary<string, ZipArchive>();
 
             // Make sure we've got a valid log archive configuration value built out here for filtering files
-            if (ArchiveConfig.ArchiveFileSetSize <= 0) _logArchiveConfig.ArchiveFileSetSize = 15;
-            if (ArchiveConfig.ArchiveOnFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 20;
-            if (ArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
-            if (string.IsNullOrWhiteSpace(ArchiveConfig.ArchiveFileFilter)) _logArchiveConfig.ArchiveFileFilter = "*.*";
-            if (string.IsNullOrWhiteSpace(ArchiveConfig.ArchivePath)) _logArchiveConfig.ArchivePath = _defaultArchivePath;
-            if (string.IsNullOrWhiteSpace(ArchiveConfig.ArchiverName)) _logArchiveConfig.ArchiverName = "SharpLoggerArchives";
-            if (string.IsNullOrWhiteSpace(ArchiveConfig.SearchPath)) _logArchiveConfig.SearchPath = SharpLogBroker._defaultOutputPath;
+            if (_logArchiveConfig.ArchiveFileSetSize <= 0) _logArchiveConfig.ArchiveFileSetSize = 15;
+            if (_logArchiveConfig.ArchiveOnFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 20;
+            if (_logArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
+            if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchiveFileFilter)) 
+                _logArchiveConfig.ArchiveFileFilter = $"{SharpLogBroker.LogBrokerName}*.*";
+            if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchivePath))
+                _logArchiveConfig.ArchivePath = _defaultArchivePath.Replace("\\\\", "\\").Trim();
+            if (string.IsNullOrWhiteSpace(_logArchiveConfig.SearchPath))
+                _logArchiveConfig.SearchPath = SharpLogBroker._defaultOutputPath.Replace("\\\\", "\\").Trim();
 
             // Ensure our new archive configuration values can be used for this routine
-            if (ArchiveConfig.SearchPath == null || !Directory.Exists(ArchiveConfig.SearchPath)) return false;
+            if (_logArchiveConfig.SearchPath == null || !Directory.Exists(_logArchiveConfig.SearchPath)) return false;
 
             // Configure a new logger for this archive helper. Then try to build sets of files to archive
             _archiveLogger = new SharpLogger(LoggerActions.UniversalLogger);
@@ -270,11 +272,11 @@ namespace SharpLogger
             _archiveLogger.WriteLog(SharpLogArchiver.ToString(), LogType.TraceLog);
 
             // Find all the files to be archived now and setup triggers for file counts
-            _archiveLogger.WriteLog($"ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: {ArchiveConfig.SearchPath}...", LogType.WarnLog);
-            IEnumerable<string[]> LogFileArchiveSets = Directory.GetFiles(ArchiveConfig.SearchPath, ArchiveConfig.ArchiveFileFilter)
+            _archiveLogger.WriteLog($"ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: {_logArchiveConfig.SearchPath}...", LogType.WarnLog);
+            IEnumerable<string[]> LogFileArchiveSets = Directory.GetFiles(_logArchiveConfig.SearchPath, _logArchiveConfig.ArchiveFileFilter)
                 .OrderBy(FileFound => new FileInfo(FileFound).CreationTime)
                 .Select((FileName, FileIndex) => new { Index = FileIndex, Value = FileName })
-                .GroupBy(CurrentFile => CurrentFile.Index / ArchiveConfig.ArchiveFileSetSize)
+                .GroupBy(CurrentFile => CurrentFile.Index / _logArchiveConfig.ArchiveFileSetSize)
                 .Select(FileSet => FileSet.Select(FileValue => FileValue.Value).ToArray());
 
             // Now loop through all the archive file sets to build and find names for them
@@ -288,12 +290,12 @@ namespace SharpLogger
                 // Get date values.
                 string StartTime = $"{FirstFileMatch.Groups[1].Value}{FirstFileMatch.Groups[2].Value}{FirstFileMatch.Groups[3].Value.Substring(1)}-{FirstFileMatch.Groups[4].Value}";
                 string StopTime = $"{LastFileMatch.Groups[1].Value}{LastFileMatch.Groups[2].Value}{LastFileMatch.Groups[3].Value.Substring(1)}-{LastFileMatch.Groups[4].Value}";
-                string ArchiveExt = ArchiveConfig.CompressionStyle == CompressionType.GZipCompression ? "gz" : "zip";
-                string ArchiveFileName = $"{ArchiveConfig.ArchiverName}_{StartTime}_{StopTime}.{ArchiveExt}";
+                string ArchiveExt = _logArchiveConfig.CompressionStyle == CompressionType.GZipCompression ? "gz" : "zip";
+                string ArchiveFileName = $"{SharpLogBroker.LogBrokerName}_{StartTime}_{StopTime}.{ArchiveExt}";
 
                 // Remove and recreate this output file if needed now
-                Directory.CreateDirectory(ArchiveConfig.ArchivePath);
-                ArchiveFileName = Path.Combine(ArchiveConfig.ArchivePath, ArchiveFileName);
+                Directory.CreateDirectory(_logArchiveConfig.ArchivePath);
+                ArchiveFileName = Path.Combine(_logArchiveConfig.ArchivePath, ArchiveFileName);
                 if (File.Exists(ArchiveFileName)) File.Delete(ArchiveFileName);
 
                 // Now using the built archive file name, store it and the contents of this set on our class instance
@@ -384,8 +386,8 @@ namespace SharpLogger
         {
             // Build a correct filter for our archive values here and find all needed files
             string ExtensionValue = LogArchiveConfig.CompressionStyle == CompressionType.ZipCompression 
-                ? $"{LogArchiveConfig.ArchiverName}*.zip*".Trim()
-                : $"{LogArchiveConfig.ArchiverName}*.gz*".Trim();
+                ? $"{SharpLogBroker.LogBrokerName}*.zip*".Trim()
+                : $"{SharpLogBroker.LogBrokerName}*.gz*".Trim();
 
             // Log that we're trying to prune/cleanup our archive files found from our archive path now
             var LogArchivesLocated = Directory

@@ -23,7 +23,6 @@
         UniversalLogger = 0x0000000,          // Logger which will write out to all possible formats
         ConsoleLogger   = 0x0000001,          // Logger made to write to a Console window
         FileLogger      = 0x0000002,          // Logger made to write to a file output
-        AsyncLogger     = 0x0000010,          // Specifies the logger being built is async
     }
     /// <summary>
     /// Compression type methods for this compressor

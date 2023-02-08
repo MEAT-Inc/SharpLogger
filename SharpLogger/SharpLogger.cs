@@ -75,7 +75,7 @@ namespace SharpLogger
 
         // Private fields holding information about our built target objects
         private readonly List<Target> _loggerTargets;                     // Collection of built targets for this logger
-        private readonly List<AsyncTargetWrapper> _asyncWrappers;         // A collection of async target wrappers for our logger
+        private readonly List<LoggingRule> _loggerRules;                  // A collection of rules related to each target
 
         // Private backing fields which hold our format configurations for output
         private SharpFileTargetFormat _fileLoggerFormat;                  // Configuration to build File format strings
@@ -150,7 +150,6 @@ namespace SharpLogger
             get => this._loggerType;
             set => this.SetField(ref this._loggerType, value);
         }
-        public bool IsAsyncLogger => this._loggerType.HasFlag(LoggerActions.AsyncLogger);
         public bool IsUniversalLogger => this._loggerType.HasFlag(LoggerActions.UniversalLogger);
         public bool IsFileLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.FileLogger);
         public bool IsConsoleLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.ConsoleLogger);
@@ -190,19 +189,16 @@ namespace SharpLogger
             this.LoggerGuid = Guid.NewGuid();
 
             // Store new name value for the logger based on the provided input value
-            LoggerName = string.IsNullOrWhiteSpace(LoggerName)
-                ? this._getCallingClass(true) : LoggerName;
+            LoggerName = string.IsNullOrWhiteSpace(LoggerName) ? this._getCallingClass(true) : LoggerName;
             this.LoggerName =  $"{LoggerName}_{LoggerGuid.ToString("D").ToUpper()}";
-
-            // Configure new logger targets based on the type of this logger
-            LogManager.Configuration ??= new LoggingConfiguration();
-            this._nLogger = LogManager.GetCurrentClassLogger();
 
             // Build new lists for our logger target types
             this._loggerTargets = new List<Target>();
-            this._asyncWrappers = new List<AsyncTargetWrapper>();
+            this._loggerRules = new List<LoggingRule>();
+            LogManager.Configuration ??= new LoggingConfiguration();
 
             // Now store new targets for these loggers based on the types provided
+            this._nLogger = LogManager.GetCurrentClassLogger();
             if (this.IsFileLogger || this.IsUniversalLogger) this._spawnFileTarget();
             if (this.IsConsoleLogger || this.IsUniversalLogger) this._spawnConsoleTarget();
 
@@ -210,8 +206,8 @@ namespace SharpLogger
             this.WriteLog($"LOGGER NAME: {this.LoggerName} HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
             this.WriteLog($"--> TIME CREATED:  {this.TimeCreated:G}", LogType.TraceLog);
             this.WriteLog($"--> LOGGER GUID:   {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
-            this.WriteLog($"--> IS ASYNC:      {(this.IsAsyncLogger ? "YES" : "NO")}", LogType.TraceLog);
             this.WriteLog($"--> IS UNIVERSAL:  {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
+            this.WriteLog($"--> RULE COUNT:    {this._loggerRules.Count} RULES", LogType.TraceLog);
             this.WriteLog($"--> TARGET COUNT:  {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
@@ -224,11 +220,15 @@ namespace SharpLogger
         {
             try
             {
-                // Begin by removing all the logging targets for this logger from our configuration
-                foreach (var LoggerTarget in this._loggerTargets)
-                    LogManager.Configuration.RemoveTarget(LoggerTarget.Name);
-                foreach (var AsyncLoggerTarget in this._asyncWrappers)
-                    LogManager.Configuration.RemoveTarget(AsyncLoggerTarget.Name);
+                // Make sure the log manager configuration exists at this point first
+                if (LogManager.Configuration != null)
+                {
+                    // Begin by removing all the logging targets for this logger from our configuration
+                    foreach (var LoggerTarget in this._loggerTargets)
+                        LogManager.Configuration.RemoveTarget(LoggerTarget.Name);
+                    foreach (var TargetRule in this._loggerRules)
+                        LogManager.Configuration.RemoveRuleByName(TargetRule.RuleName);
+                }
 
                 // Remove the logger from the broker pool and
                 SharpLogBroker.DestroyLogger(this);
@@ -402,7 +402,7 @@ namespace SharpLogger
         /// Spawns a new FileTarget for this logger instance
         /// </summary>
         /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
-        private FileTarget _spawnFileTarget()
+        private void _spawnFileTarget()
         {
             // Find the name of the log file we're writing into first
             string LogFileName = Path.GetFileNameWithoutExtension(SharpLogBroker.LogFilePath);
@@ -411,36 +411,26 @@ namespace SharpLogger
             // Build the new file target for our logger instance
             var FileLoggerTarget = new FileTarget(FileTargetName);
             FileLoggerTarget.KeepFileOpen = false;
-            FileLoggerTarget.MaxArchiveFiles = 20;
             FileLoggerTarget.ConcurrentWrites = true;
-            FileLoggerTarget.ArchiveAboveSize = 1953125;
-            FileLoggerTarget.ArchiveEvery = FileArchivePeriod.Day;
             FileLoggerTarget.FileName = SharpLogBroker.LogFilePath;
             FileLoggerTarget.ArchiveNumbering = ArchiveNumberingMode.DateAndSequence;
             FileLoggerTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
-            FileLoggerTarget.ArchiveFileName = "${basedir}/LogArchives/" + SharpLogBroker.LogBrokerName + ".{####}.log";
 
-            // Register the new console logger target in the log manager configuration
-            this._loggerTargets.Add(FileLoggerTarget);
+            // Now register a new rule for the file target and store it on the logging configuration for NLog
+            LoggingRule FileLoggerRule = new LoggingRule(this.LoggerName, this._minLevel, this._maxLevel, FileLoggerTarget);
             LogManager.Configuration.AddTarget(FileLoggerTarget);
+            LogManager.Configuration.AddRule(FileLoggerRule);
+            LogManager.ReconfigExistingLoggers(true);
 
-            // If the logger is async, then spawn an async target too and store it on this instance
-            if (this.IsAsyncLogger)
-            {
-                // Spawn the async target and store it on our instance
-                var AsyncConsoleTarget = this._convertToAsyncTarget(FileLoggerTarget);
-                this._asyncWrappers.Add(AsyncConsoleTarget);
-                LogManager.Configuration.AddTarget(AsyncConsoleTarget);
-            }
-
-            // Now return the built file logging target and exit out
-            return FileLoggerTarget;
+            // Finally insert the newly built rule and target onto our logger instance then exit out
+            this._loggerRules.Add(FileLoggerRule);
+            this._loggerTargets.Add(FileLoggerTarget);
         }
         /// <summary>
-                 /// Spawns a new ColoredConsoleTarget for this logger instance
-                 /// </summary>
-                 /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
-        private ColoredConsoleTarget _spawnConsoleTarget()
+        /// Spawns a new ColoredConsoleTarget for this logger instance
+        /// </summary>
+        /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
+        private void _spawnConsoleTarget()
         {
             // Make Logger and set format.
             var ConsoleLoggerTarget = new ColoredConsoleTarget($"{this.LoggerName}_ColoredConsoleTarget");
@@ -472,43 +462,15 @@ namespace SharpLogger
                 ConsoleOutputColor.Red,
                 ConsoleOutputColor.White));
 
-            // Register the new console logger target in the log manager configuration
-            this._loggerTargets.Add(ConsoleLoggerTarget);
+            // Now register a new rule for the console target and store it on the logging configuration for NLog
+            LoggingRule ConsoleLoggerRule = new LoggingRule(this.LoggerName, this._minLevel, this._maxLevel, ConsoleLoggerTarget);
             LogManager.Configuration.AddTarget(ConsoleLoggerTarget);
+            LogManager.Configuration.AddRule(ConsoleLoggerRule);
+            LogManager.ReconfigExistingLoggers(true);
 
-            // If the logger is async, then spawn an async target too and store it on this instance
-            if (this.IsAsyncLogger)
-            {
-                // Spawn the async target and store it on our instance
-                var AsyncConsoleTarget = this._convertToAsyncTarget(ConsoleLoggerTarget);
-                this._asyncWrappers.Add(AsyncConsoleTarget);
-                LogManager.Configuration.AddTarget(AsyncConsoleTarget);
-            }
-
-            // Now return the built console logging target and exit out
-            return ConsoleLoggerTarget;
-        }
-       
-        /// <summary>
-        /// Wraps a built logging target into an async target instance and returns it out
-        /// </summary>
-        /// <param name="LoggingTarget">The target to convert</param>
-        /// <param name="MinLevel">The minimum logging level for the async target</param>
-        /// <returns>A Wrapped async target</returns>
-        private AsyncTargetWrapper _convertToAsyncTarget(Target LoggingTarget, LogType MinLevel = LogType.NoLogging)
-        {
-            // Build the wrapper object and convert our input target
-            AsyncTargetWrapper AsyncWrapper = new AsyncTargetWrapper();
-
-            // Configure properties of the async target object.
-            AsyncWrapper.QueueLimit = 5000;
-            AsyncWrapper.WrappedTarget = LoggingTarget;
-            AsyncWrapper.OverflowAction = AsyncTargetWrapperOverflowAction.Grow;
-
-            // Return the built target object.
-            var LogLevelParsed = MinLevel == LogType.NoLogging ? _minLevel : MinLevel.ToNLevel();
-            SimpleConfigurator.ConfigureForTargetLogging(AsyncWrapper, LogLevelParsed);
-            return AsyncWrapper;
+            // Finally insert the newly built rule and target onto our logger instance then exit out
+            this._loggerRules.Add(ConsoleLoggerRule);
+            this._loggerTargets.Add(ConsoleLoggerTarget);
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------

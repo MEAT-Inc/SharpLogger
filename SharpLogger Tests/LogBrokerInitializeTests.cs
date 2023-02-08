@@ -47,11 +47,16 @@ namespace SharpLogger_Tests
             // Now using all of the built broker configurations, initialize the broker and log the state of it
             LoggerTestHelpers.SeparateConsole();
             foreach (var BrokerConfiguration in ConfigBuilder.BrokerConfigs) {
+                Assert.IsTrue(SharpLogBroker.InitializeLogging(BrokerConfiguration));
+                Console.WriteLine(SharpLogBroker.ToString() + "\n");
                 foreach (var ArchiveConfiguration in ConfigBuilder.ArchiveConfigs) {
-                    Assert.IsTrue(SharpLogBroker.InitializeLogging(BrokerConfiguration, ArchiveConfiguration));
-                    Console.WriteLine(SharpLogBroker.ToString() + "\n");
-                    LoggerTestHelpers.SeparateConsole();
+                    Assert.IsTrue(SharpLogArchiver.InitializeArchiving(ArchiveConfiguration));
+                    Console.WriteLine(SharpLogArchiver.ToString() + "\n");
                 }
+
+                // Split the console output once done logging the state values found
+                LoggerTestHelpers.SeparateConsole();
+                Console.WriteLine();
             }
         }
     }
