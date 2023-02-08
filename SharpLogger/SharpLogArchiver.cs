@@ -166,7 +166,16 @@ namespace SharpLogger
             /// <summary>
             /// Builds a new instance of a log archive configuration object.
             /// </summary>
-            public ArchiveConfiguration() { }
+            public ArchiveConfiguration()
+            {
+                // Make sure we've got a valid log archive configuration value built out here for filtering files
+                if (this.ArchiveFileSetSize <= 0) this.ArchiveFileSetSize = 15;
+                if (this.ArchiveOnFileCount <= 0) this.ArchiveOnFileCount = 20;
+                if (this.ArchiveCleanupFileCount <= 0) this.ArchiveCleanupFileCount = 50;
+                if (string.IsNullOrWhiteSpace(this.ArchiveFileFilter)) this.ArchiveFileFilter = "*.*";
+                if (string.IsNullOrWhiteSpace(this.ArchivePath)) this.ArchivePath = _defaultArchivePath;
+                if (string.IsNullOrWhiteSpace(this.SearchPath)) this.SearchPath = SharpLogBroker._defaultOutputPath;
+            }
         }
         /// <summary>
         /// Event arguments for updating the current archive object.

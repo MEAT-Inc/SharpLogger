@@ -167,8 +167,8 @@ namespace SharpLogger
             public string LogFileName = $"SharpLogging_{DateTime.Now.ToString("MMddyyy-HHmmss")}.log";
 
             // Public facing fields for logging configuration/values
-            [JsonIgnore] public LogType MinLogLevel = LogType.NoLogging;
-            [JsonIgnore] public LogType MaxLogLevel = LogType.NoLogging;
+            [JsonIgnore] public LogType MinLogLevel = LogType.DebugLog;
+            [JsonIgnore] public LogType MaxLogLevel = LogType.FatalLog;
 
             #endregion //Fields
 
@@ -198,7 +198,16 @@ namespace SharpLogger
             /// <summary>
             /// Builds a new default configuration for a Log broker setup structure
             /// </summary>
-            public BrokerConfiguration() { }
+            public BrokerConfiguration()
+            {
+                // Make sure we've got a valid log broker configuration value built out
+                if (string.IsNullOrWhiteSpace(this.LogBrokerName))
+                    this.LogBrokerName = "SharpLogging";
+                if (string.IsNullOrWhiteSpace(this.LogFileName))
+                    this.LogFileName = $"SharpLogging_{DateTime.Now.ToString("MMddyyy-HHmmss")}.log";
+                if (string.IsNullOrWhiteSpace(this.LogFilePath))
+                    this.LogFilePath = Path.Combine(_defaultOutputPath, this.LogFileName);
+            }
         }
 
         #endregion //Structs and Classes
