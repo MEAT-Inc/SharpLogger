@@ -62,8 +62,11 @@ namespace SharpLogger
 
         #region Fields
 
+        // Default private field holding our base output location for archives 
+        private const string _defaultArchivePath = SharpLogBroker._defaultOutputPath + "\\" + "LogArchives";
+
         // Private logger instance used to help log information about this archive process
-        private readonly SharpLogger _archiveLogger;                        // SharpLogger instance used to write information about archiving
+        private SharpLogger _archiveLogger;                                 // SharpLogger instance used to write information about archiving
 
         // Timer for archive operations and the archive configuration used for this archiver
         private readonly Stopwatch _archiveTimer;                           // Timer to track archive routine execution time
@@ -101,14 +104,6 @@ namespace SharpLogger
         #region Structs and Classes
 
         /// <summary>
-        /// Compression type methods for this compressor
-        /// </summary>
-        public enum CompressionType
-        {
-            ZIP_COMPRESSION,        // ZIP File compression
-            GZIP_COMPRESSION,       // GZ file compression
-        }
-        /// <summary>
         /// Class which contains configuration type info for an archive session
         /// </summary>
         public struct ArchiveConfiguration
@@ -121,46 +116,45 @@ namespace SharpLogger
             // Public facing field for the archive location and the location to search
             [DefaultValue(SharpLogBroker._defaultOutputPath)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string SearchPath;
-            [DefaultValue(SharpLogBroker._defaultOutputPath + "\\" + "LogArchives")]
+            public string SearchPath = SharpLogBroker._defaultOutputPath;
+            [DefaultValue(_defaultArchivePath)] 
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string ArchivePath;
+            public string ArchivePath = _defaultArchivePath;
 
             // The default file filtering name value for an archive configuration
-            [DefaultValue("")]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string ArchiveFileFilter;
+            [DefaultValue("*.*")] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public string ArchiveFileFilter = "*.*";
 
             // Public facing fields for configuring a log archive session
-            [DefaultValue(15)]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public int ArchiveFileSetSize;
-            [DefaultValue(20)]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public int ArchiveOnFileCount;
-            [DefaultValue(50)]
-            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public int ArchiveCleanupFileCount;
+            [DefaultValue(15)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int ArchiveFileSetSize = 0;
+            [DefaultValue(20)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int ArchiveOnFileCount = 0;
+            [DefaultValue(50)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int ArchiveCleanupFileCount = 0;
 
             // Public facing fields to configure compression types for log archives
-            [JsonIgnore] public CompressionType CompressionStyle;
-            [JsonIgnore] public CompressionLevel CompressionLevel;
+            [JsonIgnore] public CompressionLevel CompressionLevel = CompressionLevel.Optimal;
+            [JsonIgnore] public CompressionType CompressionStyle = CompressionType.ZipCompression;
 
             #endregion //Fields
 
             #region Properties
 
             // Private properties used to help build JSON configuration objects for archives
-            [JsonProperty("CompressionLevel")] private string _compressionLevel => CompressionLevel.ToString();
-            [JsonProperty("CompressionStyle")] private string _compressionStyle => CompressionStyle.ToString();
+            [DefaultValue("Optimal")] 
+            [JsonProperty("CompressionLevel", DefaultValueHandling = DefaultValueHandling.Populate)]
+            private string _compressionLevel => CompressionLevel.ToString();
+            [DefaultValue("ZipCompression")] 
+            [JsonProperty("CompressionStyle", DefaultValueHandling = DefaultValueHandling.Populate)] 
+            private string _compressionStyle => CompressionStyle.ToString();
 
             // Internal JSON ignored configuration properties about this configuration
             [JsonIgnore]
             internal bool IsDefaultConfig =>
                 this.ArchiveFileSetSize == 0 &&
                 this.ArchiveOnFileCount == 0 &&
-                this.ArchiveCleanupFileCount == 0 &&
-                string.IsNullOrWhiteSpace(this.ArchivePath);
+                this.ArchiveCleanupFileCount == 0;
 
             #endregion //Properties
 
@@ -172,22 +166,7 @@ namespace SharpLogger
             /// <summary>
             /// Builds a new instance of a log archive configuration object.
             /// </summary>
-            public ArchiveConfiguration()
-            {
-                // Setup and store default archive path values
-                this.ArchivePath = string.Empty;
-                this.SearchPath = SharpLogBroker._defaultOutputPath;
-                this.ArchiveFileFilter = Process.GetCurrentProcess().ProcessName;
-
-                // Configure file count values for archive triggers
-                this.ArchiveOnFileCount = 15;
-                this.ArchiveFileSetSize = 20;
-                this.ArchiveCleanupFileCount = 50;
-
-                // Finally setup our compression types and exit out
-                this.CompressionLevel = CompressionLevel.Optimal;
-                this.CompressionStyle = CompressionType.ZIP_COMPRESSION;
-            }
+            public ArchiveConfiguration() { }
         }
         /// <summary>
         /// Event arguments for updating the current archive object.
@@ -253,53 +232,14 @@ namespace SharpLogger
         /// <summary>
         /// Builds a new log archiving instance which will archive content based on the provided archiver configuration
         /// <param name="ArchiverName">Name of the archive configuration being used</param>
-        /// <param name="ArchiverConfig">The configuration used to perform archive routines</param>
+        /// <param name="ArchiveConfig">The configuration used to perform archive routines</param>
         /// </summary>
-        public SharpLogArchiver(string ArchiverName, ArchiveConfiguration ArchiverConfig)
+        public SharpLogArchiver(string ArchiverName, ArchiveConfiguration ArchiveConfig)
         {
             // Configure new values for the archive timer, the archived files, and build a new configuration
             this._archiverName = ArchiverName;
+            this._archiveConfig = ArchiveConfig;
             this._archiveTimer = new Stopwatch();
-            this._archiveConfig = ArchiverConfig;
-
-            // Configure our backing fields here
-            this._archiveOutputFiles = new List<string>();
-            this._archivedFileSets = new Dictionary<string, string[]>();
-            this._archiveZipOutputs = new Dictionary<string, ZipArchive>();
-
-            // Configure a new logger for this archive helper
-            this._archiveLogger = new SharpLogger(LoggerActions.FileLogger | LoggerActions.ConsoleLogger);
-
-            // Build our archiver file output name and store it
-            if (!this._initializeArchiveSets())
-                throw new InvalidOperationException("Error! Failed to configure a collection of ZipArchives!");
-        }
-        /// <summary>
-        /// Builds a new log archiving instance using provided manual values for a new log archiver
-        /// </summary>
-        /// <param name="ArchiverName">The name of the archiver to configure</param>
-        /// <param name="SearchPath">The path to find files to archive in</param>
-        /// <param name="ArchivePath">The path to put our output archives</param>
-        /// <param name="FileFilter">The filter for finding file names (Optional. Defaults to the program name)</param>
-        /// <param name="SetSize">The size of each log archive file in number of files</param>
-        /// <param name="TriggerCount">The number of files to find before firing off a new archive</param>
-        /// <param name="ArchiveCleanupCount">The number of archives to store before purging archives out</param>
-        public SharpLogArchiver(string ArchiverName, string SearchPath, string ArchivePath, string FileFilter = "", int SetSize = 15, int TriggerCount = 20, int ArchiveCleanupCount = 50)
-        {
-            // Build a new log archive configuration from the passed in values and find our log archive sets to build
-            this._archiverName = ArchiverName;
-            this._archiveTimer = new Stopwatch();
-            this._archiveConfig = new ArchiveConfiguration()
-            {
-                SearchPath = SearchPath,
-                ArchivePath = ArchivePath,
-                ArchiveFileFilter = FileFilter,
-                ArchiveFileSetSize = SetSize,
-                ArchiveOnFileCount = TriggerCount,
-                ArchiveCleanupFileCount = ArchiveCleanupCount,
-                CompressionLevel = CompressionLevel.Optimal,
-                CompressionStyle = CompressionType.ZIP_COMPRESSION
-            };
 
             // Configure our backing fields here
             this._archiveOutputFiles = new List<string>();
@@ -384,7 +324,7 @@ namespace SharpLogger
         public bool CleanupArchiveHistory()
         {
             // Log that we're trying to prune/cleanup our archive files found from our archive path now
-            string ExtensionValue = this.ArchiveConfig.CompressionStyle == CompressionType.ZIP_COMPRESSION ? "*.zip*" : "*.gz*";
+            string ExtensionValue = this.ArchiveConfig.CompressionStyle == CompressionType.ZipCompression ? "*.zip*" : "*.gz*";
             var LogArchivesLocated = Directory
                 .GetFiles(this.ArchiveConfig.ArchivePath, ExtensionValue, SearchOption.AllDirectories)
                 .Where(FileObj => FileObj.Contains(this.ArchiveConfig.ArchiveFileFilter))
@@ -398,7 +338,7 @@ namespace SharpLogger
                 // If less than the limit return out
                 int ArchiveLimit = this.ArchiveConfig.ArchiveCleanupFileCount;
                 this._archiveLogger?.WriteLog($"NOT CLEANING OUT ARCHIVES SINCE OUR ARCHIVE COUNT IS LESS THAN OUR SPECIFIED VALUE OF {ArchiveLimit}", LogType.WarnLog);
-                return false;
+                return true;
             }
 
             // Now locate and delete the archive sets found that aren't desired for the history based on our configuration
@@ -442,15 +382,21 @@ namespace SharpLogger
                 return false;
 
             // Make sure we've got a valid log archive configuration value built out here for filtering files
+            if (this.ArchiveConfig.ArchiveFileSetSize <= 0) this._archiveConfig.ArchiveFileSetSize = 15;
+            if (this.ArchiveConfig.ArchiveOnFileCount <= 0) this._archiveConfig.ArchiveOnFileCount = 20;
+            if (this.ArchiveConfig.ArchiveCleanupFileCount <= 0) this._archiveConfig.ArchiveCleanupFileCount = 50;
             if (string.IsNullOrWhiteSpace(this.ArchiveConfig.ArchiveFileFilter))
-                this._archiveConfig.ArchiveFileFilter = Process.GetCurrentProcess().ProcessName;
+                this._archiveConfig.ArchiveFileFilter = "*.*";
+            if (string.IsNullOrWhiteSpace(this.ArchiveConfig.SearchPath))
+                this._archiveConfig.SearchPath = SharpLogBroker._defaultOutputPath;
+            if (string.IsNullOrWhiteSpace(this.ArchiveConfig.ArchivePath))
+                this._archiveConfig.ArchivePath = _defaultArchivePath;
 
             // Find all the files to be archived now and setup triggers for file counts
-            IEnumerable<string[]> LogFileArchiveSets = Directory.GetFiles(ArchiveConfig.SearchPath)
+            IEnumerable<string[]> LogFileArchiveSets = Directory.GetFiles(ArchiveConfig.SearchPath, ArchiveConfig.ArchiveFileFilter)
                 .OrderBy(FileFound => new FileInfo(FileFound).CreationTime)
-                .Where(FileName => FileName.Contains(ArchiveConfig.ArchiveFileFilter))
                 .Select((FileName, FileIndex) => new { Index = FileIndex, Value = FileName })
-                .GroupBy(CurrentFile => CurrentFile.Index / ArchiveConfig.ArchiveFileSetSize)
+                .GroupBy(CurrentFile => CurrentFile.Index / this.ArchiveConfig.ArchiveFileSetSize)
                 .Select(FileSet => FileSet.Select(FileValue => FileValue.Value).ToArray());
 
             // Now loop through all the archive file sets to build and find names for them
@@ -464,7 +410,7 @@ namespace SharpLogger
                 // Get date values.
                 string StartTime = $"{FirstFileMatch.Groups[1].Value}{FirstFileMatch.Groups[2].Value}{FirstFileMatch.Groups[3].Value.Substring(1)}-{FirstFileMatch.Groups[4].Value}";
                 string StopTime = $"{LastFileMatch.Groups[1].Value}{LastFileMatch.Groups[2].Value}{LastFileMatch.Groups[3].Value.Substring(1)}-{LastFileMatch.Groups[4].Value}";
-                string ArchiveExt = ArchiveConfig.CompressionStyle == CompressionType.GZIP_COMPRESSION ? "gz" : "zip";
+                string ArchiveExt = ArchiveConfig.CompressionStyle == CompressionType.GZipCompression ? "gz" : "zip";
                 string ArchiveFileName = $"{this.ArchiverName}_{StartTime}_{StopTime}.{ArchiveExt}";
 
                 // Remove and recreate this output file if needed now
