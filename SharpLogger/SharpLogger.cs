@@ -418,8 +418,8 @@ namespace SharpLogger
 
             // Now register a new rule for the file target and store it on the logging configuration for NLog
             LoggingRule FileLoggerRule = new LoggingRule(this.LoggerName, this._minLevel, this._maxLevel, FileLoggerTarget);
+            LogManager.Configuration.AddRuleForAllLevels(FileLoggerTarget);
             LogManager.Configuration.AddTarget(FileLoggerTarget);
-            LogManager.Configuration.AddRule(FileLoggerRule);
             LogManager.ReconfigExistingLoggers(true);
 
             // Finally insert the newly built rule and target onto our logger instance then exit out
@@ -464,8 +464,8 @@ namespace SharpLogger
 
             // Now register a new rule for the console target and store it on the logging configuration for NLog
             LoggingRule ConsoleLoggerRule = new LoggingRule(this.LoggerName, this._minLevel, this._maxLevel, ConsoleLoggerTarget);
+            LogManager.Configuration.AddRuleForAllLevels(ConsoleLoggerTarget);
             LogManager.Configuration.AddTarget(ConsoleLoggerTarget);
-            LogManager.Configuration.AddRule(ConsoleLoggerRule);
             LogManager.ReconfigExistingLoggers(true);
 
             // Finally insert the newly built rule and target onto our logger instance then exit out
