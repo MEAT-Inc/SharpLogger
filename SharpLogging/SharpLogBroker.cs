@@ -226,6 +226,10 @@ namespace SharpLogging
         /// </summary>
         public new static string ToString()
         {
+            // Make sure the log broker is built before doing this 
+            if (!LogBrokerInitialized)
+                throw new InvalidOperationException("Error! Please configure the SharpLogBroker before using archives!");
+
             // Build the output string to return based on properties
             string OutputString =
                 $"Log Broker Information - '{LogBrokerName}' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
@@ -257,9 +261,7 @@ namespace SharpLogging
             _brokerCreated = DateTime.Now;
             LogBrokerConfig = BrokerConfig;
             LogBrokerName = string.IsNullOrWhiteSpace(BrokerConfig.LogBrokerName)
-                ? Assembly.GetExecutingAssembly()
-                    .FullName.Split(' ').FirstOrDefault()
-                    ?.Replace(",", string.Empty).Trim()
+                ? AppDomain.CurrentDomain.FriendlyName.Replace(" ","-")
                 : BrokerConfig.LogBrokerName;
 
             // Check our logging level values provided in our configurations and see what needs to be updated
@@ -329,6 +331,7 @@ namespace SharpLogging
             if (!Directory.Exists(OutputFolder)) Directory.CreateDirectory(OutputFolder);
 
             // Update our configuration to reflect the newly determined values for files
+            _logBrokerInitialized = true;
             _logBrokerConfig.MaxLogLevel = MaxLevel;
             _logBrokerConfig.MinLogLevel = MinLevel;
             _logBrokerConfig.LogFileName = LogFileName;
@@ -348,10 +351,9 @@ namespace SharpLogging
             MasterLogger = new SharpLogger(LoggerActions.UniversalLogger,"LogBrokerLogger");
             MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
             MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!", LogType.InfoLog);
-            MasterLogger.WriteLog(SharpLogBroker.ToString(), LogType.TraceLog);
-
-            // Return true once this broker instance booted up and ready to run
-            _logBrokerInitialized = true;
+            MasterLogger.WriteLog(ToString(), LogType.TraceLog);
+            
+            // Return passed at this point since we've written all our logging routines out
             return _logBrokerInitialized;
         }
 

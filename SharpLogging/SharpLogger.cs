@@ -345,7 +345,7 @@ namespace SharpLogging
             this.WriteLog($"\\__ IS UNIVERSAL:   {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
             this.WriteLog($"\\__ RULE COUNT:     {this._loggerRules.Count} RULES", LogType.TraceLog);
             this.WriteLog($"\\__ TARGET COUNT:   {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
-            this.WriteLog($"\\__ LOGGER STRING:  {this.ToString()}", LogType.TraceLog);
+            this.WriteLog($"\\__ LOGGER STRING:  {this}", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
             if (!SharpLogBroker.RegisterLogger(this))

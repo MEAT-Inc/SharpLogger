@@ -73,6 +73,7 @@ namespace SharpLogging
         // Private backing fields for archive configuration values
         private static Stopwatch _archiveTimer;                                    // Timer to track archive routine execution time
         private static DateTime _archiverCreated;                                  // The time our archiver instance was built
+        private static bool _logArchiverInitialized;                               // Tells us if a log archiver instance is built and setup or not
         private static List<string> _archiveOutputFiles;                           // List of all the file names being built by this archiver
         private static Dictionary<string, string[]> _archivedFileSets;             // List of all files in each archive set
         private static Dictionary<string, ZipArchive> _archiveZipOutputs;          // List of all the zipArchive objects built
@@ -82,6 +83,11 @@ namespace SharpLogging
         #region Properties
 
         // Instance properties used to configure new archive objects and routines 
+        public static bool LogArchiverInitialized
+        {
+            get => _logArchiverInitialized;
+            private set => _logArchiverInitialized = value;
+        }
         public static ArchiveConfiguration LogArchiveConfig
         {
             get => _logArchiveConfig;
@@ -216,9 +222,14 @@ namespace SharpLogging
         /// </summary>
         public new static string ToString()
         {
+            // Make sure the log broker is built before doing this 
+            if (!SharpLogBroker.LogBrokerInitialized || !LogArchiverInitialized)
+                throw new InvalidOperationException("Error! Please configure the SharpLogBroker And SharpLogArchiver before using archives!");
+
             // Build the output string to return based on properties
             string OutputString =
                 $"Log Archiver Information - {SharpLogBroker.LogBrokerName} (Archives) - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"\t\\__ Archiver State:  {(_logArchiverInitialized ? "Archiver Ready!" : "Archiver Not Configured!")}\n" +
                 $"\t\\__ Creation Time:   {_archiverCreated:g}\n" +
                 $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} file{(LogArchiveConfig.ArchiveFileSetSize != 1 ? "s" : string.Empty)}\n" +
                 $"\t\\__ Trigger Count:   {LogArchiveConfig.ArchiveOnFileCount} file{(LogArchiveConfig.ArchiveOnFileCount != 1 ? "s" : string.Empty)}\n" +
@@ -267,17 +278,28 @@ namespace SharpLogging
             if (_logArchiveConfig.SearchPath == null || !Directory.Exists(_logArchiveConfig.SearchPath)) return false;
 
             // Configure a new logger for this archive helper. Then try to build sets of files to archive
+            _logArchiverInitialized = true;
             _archiveLogger = new SharpLogger(LoggerActions.UniversalLogger, "LogArchiverLogger");
             _archiveLogger.WriteLog("ARCHIVE HELPER BUILT WITHOUT ISSUES! READY TO PULL IN ARCHIVES USING PROVIDED CONFIGURATION!", LogType.InfoLog);
-            _archiveLogger.WriteLog(SharpLogArchiver.ToString(), LogType.TraceLog);
+            _archiveLogger.WriteLog(ToString(), LogType.TraceLog);
 
             // Find all the files to be archived now and setup triggers for file counts
             _archiveLogger.WriteLog($"ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: {_logArchiveConfig.SearchPath}...", LogType.WarnLog);
-            IEnumerable<string[]> LogFileArchiveSets = Directory.GetFiles(_logArchiveConfig.SearchPath, _logArchiveConfig.ArchiveFileFilter)
+            IEnumerable<string[]> LogFileArchiveSets = Directory
+                .GetFiles(_logArchiveConfig.SearchPath, _logArchiveConfig.ArchiveFileFilter)
                 .OrderBy(FileFound => new FileInfo(FileFound).CreationTime)
                 .Select((FileName, FileIndex) => new { Index = FileIndex, Value = FileName })
                 .GroupBy(CurrentFile => CurrentFile.Index / _logArchiveConfig.ArchiveFileSetSize)
-                .Select(FileSet => FileSet.Select(FileValue => FileValue.Value).ToArray());
+                .Select(FileSet => FileSet.Select(FileValue => FileValue.Value).ToArray())
+                .Where(ArchiveSet => ArchiveSet.Count() >= _logArchiveConfig.ArchiveFileSetSize).ToList();
+
+            // If no archive sets were built, then log that and move o
+            if (!LogFileArchiveSets.Any())
+            {
+                // Log no sets were created and exit out of this method
+                _archiveLogger.WriteLog("NO LOG FILE ARCHIVE SETS COULD BE BUILT! THIS IS LIKELY BECAUSE THERE AREN'T ENOUGH FILES TO ARCHIVE!", LogType.WarnLog);
+                return _logArchiverInitialized;
+            }
 
             // Now loop through all the archive file sets to build and find names for them
             foreach (var ArchiveSet in LogFileArchiveSets)
@@ -313,7 +335,7 @@ namespace SharpLogging
             }
 
             // Return out based on the number of files found for our archives
-            return true;
+            return _logArchiverInitialized;
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
