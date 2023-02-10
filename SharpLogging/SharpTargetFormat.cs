@@ -1,4 +1,4 @@
-﻿namespace SharpLogger
+﻿namespace SharpLogging
 {
     /// <summary>
     /// Base format type for a logger output configuration

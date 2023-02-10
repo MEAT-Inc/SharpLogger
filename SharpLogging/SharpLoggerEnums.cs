@@ -1,4 +1,4 @@
-﻿namespace SharpLogger
+﻿namespace SharpLogging
 {
     /// <summary>
     /// Wrapped log level type so NLog isn't a required ref for anything that uses this.

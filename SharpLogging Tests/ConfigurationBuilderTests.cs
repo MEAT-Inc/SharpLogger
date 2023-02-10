@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SharpLogger;
+using SharpLogging;
 
 namespace SharpLogger_Tests
 {
@@ -35,28 +35,28 @@ namespace SharpLogger_Tests
                         ""MaxLogLevel"": ""FatalLog""
                     },                    
                     { 
-                        ""LogBrokerName"": ""SharpLoggerTests"",
+                        ""LogBrokerName"": ""SharpLoggingTests"",
                         ""LogFilePath"": null, 
                         ""LogFileName"": null,
                         ""MinLogLevel"": ""TraceLog"",
                         ""MaxLogLevel"": ""FatalLog""
                     },
                     { 
-                        ""LogBrokerName"": ""SharpLoggerTests"",
+                        ""LogBrokerName"": ""SharpLoggingTests"",
                         ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging"",
                         ""LogFileName"": null,
                         ""MinLogLevel"": ""TraceLog"",
                         ""MaxLogLevel"": ""FatalLog"" 
                     },
                     { 
-                        ""LogBrokerName"": ""SharpLoggerTests"",
+                        ""LogBrokerName"": ""SharpLoggingTests"",
                         ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging\\"",
                         ""LogFileName"": null,
                         ""MinLogLevel"": ""TraceLog"",
                         ""MaxLogLevel"": ""FatalLog"" 
                     },
                     {
-                        ""LogBrokerName"": ""SharpLoggerTests"",
+                        ""LogBrokerName"": ""SharpLoggingTests"",
                          ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging\\SharpLoggerTests_DefinedLog.log"",
                          ""LogFileName"": null,
                          ""MinLogLevel"": ""TraceLog"",
@@ -77,7 +77,7 @@ namespace SharpLogger_Tests
                     {
                         ""SearchPath"": null,
                         ""ArchivePath"": null,
-                        ""ArchiveFileFilter"": ""SharpLoggerTests*.log"",
+                        ""ArchiveFileFilter"": ""SharpLoggingTests*.log"",
                         ""ArchiveFileSetSize"": -10,
                         ""ArchiveOnFileCount"": 30,
                         ""ArchiveCleanupFileCount"": 100,
@@ -87,7 +87,7 @@ namespace SharpLogger_Tests
                     {
                         ""SearchPath"": null,
                         ""ArchivePath"": null,
-                        ""ArchiveFileFilter"": ""SharpLoggerTests*.log"",
+                        ""ArchiveFileFilter"": ""SharpLoggingTests*.log"",
                         ""ArchiveFileSetSize"": 15,
                         ""ArchiveOnFileCount"": 20,
                         ""ArchiveCleanupFileCount"": 50,
