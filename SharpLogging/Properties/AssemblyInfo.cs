@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 using System.Resources;
 
 // General Information
-[assembly: AssemblyTitle("SharpLogger")]
+[assembly: AssemblyTitle("SharpLogging")]
 [assembly: AssemblyDescription("A C# Logger that really does the most")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("MEAT Inc")]
-[assembly: AssemblyProduct("SharpLogger")]
+[assembly: AssemblyProduct("SharpLogging")]
 [assembly: AssemblyCopyright("Copyright ©MEAT Inc 2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -19,7 +19,7 @@ using System.Resources;
 [assembly: Guid("909e0c64-5b20-4267-b57c-87a29383525a")]
 
 // Version information
-[assembly: AssemblyVersion("1.10.0.140")]
-[assembly: AssemblyFileVersion("1.10.0.140")]
+[assembly: AssemblyVersion("2.4.8.239")]
+[assembly: AssemblyFileVersion("2.4.8.239")]
 [assembly: NeutralResourcesLanguageAttribute( "en-US" )]
 

@@ -7,8 +7,8 @@
     <ProjectGuid>{909E0C64-5B20-4267-B57C-87A29383525A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SharpLogger</RootNamespace>
-    <AssemblyName>SharpLogger</AssemblyName>
+    <RootNamespace>SharpLogging</RootNamespace>
+    <AssemblyName>SharpLogging</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -37,7 +37,7 @@
       <HintPath>packages\Newtonsoft.Json.13.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <HintPath>packages\NLog.5.1.0\lib\net46\NLog.dll</HintPath>
+      <HintPath>..\packages\NLog.5.1.1\lib\net46\NLog.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
@@ -55,24 +55,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LogBroker.cs" />
-    <Compile Include="LoggingSetup.cs" />
-    <Compile Include="LogArchiving\LogArchiveConfiguration.cs" />
-    <Compile Include="LogArchiving\LogArchiveEvents.cs" />
-    <Compile Include="LogArchiving\LogArchiver.cs" />
-    <Compile Include="LoggerObjects\BaseLogger.cs" />
-    <Compile Include="LoggerObjects\ConsoleLogger.cs" />
-    <Compile Include="LoggerObjects\FileLogger.cs" />
-    <Compile Include="LoggerObjects\MasterLogger.cs" />
-    <Compile Include="LoggerObjects\SubServiceLogger.cs" />
-    <Compile Include="LoggerQueue.cs" />
-    <Compile Include="LoggerSupport\LoggerConfiguration.cs" />
-    <Compile Include="LoggerSupport\LoggerEnums.cs" />
+    <Compile Include="SharpLogBroker.cs" />
+    <Compile Include="SharpLogArchiver.cs" />
+    <Compile Include="SharpLogger.cs" />
+    <Compile Include="SharpLoggerEnums.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>AssemblyInfo.tt</DependentUpon>
     </Compile>
+    <Compile Include="SharpTargetFormat.cs" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
@@ -86,11 +78,12 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>"$(DevEnvDir)\TextTransform.exe" -a !!build!true "$(ProjectDir)Properties\AssemblyInfo.tt"</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>copy /Y  "$(TargetDir)*" "$(SolutionDir)SharpLoggerNuget\lib\net472"</PostBuildEvent>
+    <PostBuildEvent>copy /Y  "$(TargetDir)*" "$(ProjectDir)SharpLoggingNuget\lib\net472"</PostBuildEvent>
   </PropertyGroup>
 </Project>
