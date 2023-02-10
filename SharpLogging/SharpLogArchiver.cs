@@ -228,7 +228,7 @@ namespace SharpLogging
 
             // Build the output string to return based on properties
             string OutputString =
-                $"Log Archiver Information - {SharpLogBroker.LogBrokerName} (Archives) - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"\n\nLog Archiver Information - {SharpLogBroker.LogBrokerName} (Archives) - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Archiver State:  {(_logArchiverInitialized ? "Archiver Ready!" : "Archiver Not Configured!")}\n" +
                 $"\t\\__ Creation Time:   {_archiverCreated:g}\n" +
                 $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} file{(LogArchiveConfig.ArchiveFileSetSize != 1 ? "s" : string.Empty)}\n" +
@@ -241,7 +241,7 @@ namespace SharpLogging
                 $"\t\\__ Archive Logger:  {_archiveLogger.LoggerName}\n" + 
                 $"\t\\__ Logger Targets:  {_archiveLogger.LoggerType}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Archiver Config (JSON):  {JsonConvert.SerializeObject(LogArchiveConfig)}" +
+                $"\t\\__ Archiver Config (JSON):\n\t\t\t{JsonConvert.SerializeObject(LogArchiveConfig, Formatting.Indented).Replace("\n", "\n\t\t")}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
 
             // Return this built output string here
