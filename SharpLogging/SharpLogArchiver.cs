@@ -241,7 +241,8 @@ namespace SharpLogging
                 $"\t\\__ Archive Logger:  {_archiveLogger.LoggerName}\n" + 
                 $"\t\\__ Logger Targets:  {_archiveLogger.LoggerType}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Archiver Config (JSON):  {JsonConvert.SerializeObject(LogArchiveConfig)}";
+                $"\t\\__ Archiver Config (JSON):  {JsonConvert.SerializeObject(LogArchiveConfig)}" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
 
             // Return this built output string here
             return OutputString;
