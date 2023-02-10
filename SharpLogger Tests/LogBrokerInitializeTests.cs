@@ -59,5 +59,29 @@ namespace SharpLogger_Tests
                 Console.WriteLine();
             }
         }
+        /// <summary>
+        /// Simple test method which is used to spawn new logger instances for testing output content
+        /// </summary>
+        [TestMethod("Spawn Sample Logger")]
+        public void SpawnLoggers()
+        {
+            // Spawn a new test class for our JSON importing routines first
+            ConfigurationBuilderTests ConfigBuilder = new ConfigurationBuilderTests();
+            ConfigBuilder.BuildBrokerConfigurations();
+            ConfigBuilder.BuildArchiveConfigurations();
+
+            // Assert we loaded in all of our configurations correctly
+            Assert.IsTrue(ConfigBuilder.BrokerConfigs.Any(), "Error! No broker configurations were found!");
+            Assert.IsTrue(ConfigBuilder.ArchiveConfigs.Any(), "Error! No archiver configurations were found!");
+
+            // Setup our log broker now
+            LoggerTestHelpers.SeparateConsole();
+            SharpLogBroker.InitializeLogging(ConfigBuilder.BrokerConfigs.ToList()[2]);
+            Assert.IsTrue(SharpLogBroker.MasterLogger != null, "Error! Master logger for a broker instance was null!");
+
+            // Log some basic information out and spawn a new logger for testing
+            SharpLogBroker.MasterLogger.WriteLog("SOME SAMPLE OUTPUT FROM THE MASTER LOGGER!", LogType.InfoLog);
+            var SpawnedLogger = new SharpLogger.SharpLogger(LoggerActions.FileLogger | LoggerActions.FileLogger);
+        }
     }
 }

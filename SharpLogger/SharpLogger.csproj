@@ -7,8 +7,8 @@
     <ProjectGuid>{909E0C64-5B20-4267-B57C-87A29383525A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SharpLogger</RootNamespace>
-    <AssemblyName>SharpLogger</AssemblyName>
+    <RootNamespace>SharpLogging</RootNamespace>
+    <AssemblyName>SharpLogging</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -84,6 +84,6 @@
     <PreBuildEvent>"$(DevEnvDir)\TextTransform.exe" -a !!build!true "$(ProjectDir)Properties\AssemblyInfo.tt"</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>copy /Y  "$(TargetDir)*" "$(ProjectDir)SharpLoggerNuget\lib\net472"</PostBuildEvent>
+    <PostBuildEvent>copy /Y  "$(TargetDir)*" "$(ProjectDir)SharpLoggingNuget\lib\net472"</PostBuildEvent>
   </PropertyGroup>
 </Project>

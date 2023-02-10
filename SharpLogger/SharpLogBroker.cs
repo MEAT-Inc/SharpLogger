@@ -9,6 +9,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using NLog.Config;
+using NLog.Targets;
 
 // Static using for the Log Archiver configuration structure
 using ArchiveConfiguration = SharpLogger.SharpLogArchiver.ArchiveConfiguration;
@@ -30,11 +32,13 @@ namespace SharpLogger
 
         // Private static collection of all current logger instances
         private static DateTime _brokerCreated;                         // The time the broker instance was built
+        private static bool _logBrokerInitialized;                      // Sets if the log broker has been built or not at this point
         private static List<SharpLogger> _loggerPool;                   // The collection of all built loggers in this instance
-
-        // Private backing fields for logger configuration values
         private static BrokerConfiguration _logBrokerConfig;            // Passed in configuration values used to setup this log broker instance
-        private static ArchiveConfiguration _logArchiveConfig;          // Passed in or default archive configuration to archive output 
+
+        // Private static collection of all logger targets and rules   
+        private static List<Target> _loggingTargets;                     // All of the targets built for all of our loggers
+        private static List<LoggingRule> _loggingRules;                  // All of the rules built for our logger instances
 
         // Private backing fields for logger states and values
         private static bool _loggingEnabled = true;                     // Sets if logging is currently enabled or disabled for this log broker instance
@@ -57,7 +61,12 @@ namespace SharpLogger
 
         #region Properties
 
-        // Default log broker and archiver configurations
+        // Default log broker and archiver configurations and overall state of the broker
+        public static bool LogBrokerInitialized
+        {
+            get => _logBrokerInitialized;
+            private set => _logBrokerInitialized = value;
+        }
         public static BrokerConfiguration LogBrokerConfig
         {
             get => _logBrokerConfig;
@@ -123,7 +132,39 @@ namespace SharpLogger
         {
             get
             {
+                // Ensure the list of loggers exists and convert it to an array
+                _loggerPool ??= new List<SharpLogger>();
                 lock (_loggerPool) return _loggerPool.ToArray();
+            }
+        }
+
+        // Logger targets and rules for this log broker instance
+        public static Target[] LoggingTargets
+        {
+            get
+            {
+                // Ensure the list of targets exists and convert it to an array
+                _loggingTargets ??= new List<Target>();
+                lock (_loggingTargets) return _loggingTargets.ToArray();
+            }
+            internal set
+            {
+                // Lock the targets list and set new values for it
+                lock (_loggingTargets) _loggingTargets = value.ToList();
+            }
+        }
+        public static LoggingRule[] LoggingRules
+        {
+            get
+            {
+                // Ensure the list of rules exists and convert it to an array
+                _loggingRules ??= new List<LoggingRule>();
+                lock (_loggingRules) return _loggingRules.ToArray();
+            }
+            internal set
+            {
+                // Lock the rules list and set new values for it
+                lock (_loggingRules) _loggingRules = value.ToList();
             }
         }
 
@@ -207,7 +248,8 @@ namespace SharpLogger
         {
             // Build the output string to return based on properties
             string OutputString =
-                $"Log Broker Information - {LogBrokerName} - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"Log Broker Information - '{LogBrokerName}' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"\t\\__ Broker Status:  {(_logBrokerInitialized ? "Log Broker Ready!" : "Not Configured!")}\n" +
                 $"\t\\__ Creation Time:  {_brokerCreated:g}\n" +
                 $"\t\\__ Logging State:  {(LoggingEnabled ? "Logging Currently ON" : "Logging Currently OFF")}\n" +
                 $"\t\\__ Min Log Level:  {MinLevel} (NLevel: {_minLevel})\n" +
@@ -314,13 +356,15 @@ namespace SharpLogger
             _logBrokerConfig.LogBrokerName = LogBrokerName;
 
             // Spawn a new SharpLogger which will use our master logger instance to write log output
+            LogManager.Configuration ??= new LoggingConfiguration();
             MasterLogger = new SharpLogger(LoggerActions.UniversalLogger);
             MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
             MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!", LogType.InfoLog);
             MasterLogger.WriteLog(SharpLogBroker.ToString(), LogType.TraceLog);
 
-            // Return true once this btoker instance booted up and ready to run
-            return true;
+            // Return true once this broker instance booted up and ready to run
+            _logBrokerInitialized = true;
+            return _logBrokerInitialized;
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -367,7 +411,6 @@ namespace SharpLogger
         internal static bool RegisterLogger(SharpLogger LoggerItem)
         {
             // Lock the logger pool so we don't have thread issues
-            _loggerPool ??= new List<SharpLogger>();
             lock (_loggerPool)
             {
                 // Find existing loggers that may have the same name as this logger obj.
@@ -378,10 +421,38 @@ namespace SharpLogger
                     int IndexOfExisting = _loggerPool.IndexOf(LoggerItem);
                     _loggerPool[IndexOfExisting] = LoggerItem;
                 }
-
-                // Return out based on if the logger is found in our pool or not
-                return _loggerPool.Contains(LoggerItem);
             }
+
+            // Using the newly added logger, try and update our rules for the log broker store
+            lock (_loggingRules)
+            {
+                // Store our new rule values and insert them onto the broker as needed
+                var NewLoggerRules = LoggerItem.LoggerRules;
+                foreach (LoggingRule LoggerRule in NewLoggerRules)
+                {
+                    // Find an existing rule first and replace if needed. Otherwise insert the new rule
+                    var ExistingRule = _loggingRules.FirstOrDefault(LogRule => LogRule.RuleName == LoggerRule.RuleName);
+                    if (ExistingRule != null) _loggingRules[_loggingRules.IndexOf(ExistingRule)] = LoggerRule;
+                    else _loggingRules.Add(LoggerRule);
+                }
+            }
+
+            // Using the newly added logger, try and update our targets for the log broker store
+            lock (_loggingTargets)
+            {
+                // Store our new target values and insert them onto the broker as needed
+                var NewLoggerTargets = LoggerItem.LoggerTargets;
+                foreach (Target LoggerTarget in NewLoggerTargets)
+                {
+                    // Find an existing target first and replace if needed. Otherwise insert the new target
+                    var ExistingTarget = _loggingTargets.FirstOrDefault(LogTarget => LogTarget.Name == LoggerTarget.Name);
+                    if (ExistingTarget != null) _loggingTargets[_loggingTargets.IndexOf(ExistingTarget)] = LoggerTarget;
+                    else _loggingTargets.Add(LoggerTarget);
+                }
+            }
+
+            // Return out based on if the logger is found in our pool or not
+            lock (_loggerPool) return _loggerPool.Contains(LoggerItem);
         }
         /// <summary>
         /// Removes the logger passed from the logger queue
@@ -390,14 +461,33 @@ namespace SharpLogger
         /// <returns>True if the logger is removed. False if it is not</returns>
         internal static bool DestroyLogger(SharpLogger LoggerItem)
         {
-            // Lock the logger pool so we don't have thread issues
-            _loggerPool ??= new List<SharpLogger>();
+            // Setup placeholder values for our removal results 
+            int LoggersRemoved = 0;
+            int LoggerRulesRemoved = 0;
+            int LoggerTargetsRemoved = 0;
+
+            // Remove the logger instance from the pool and then remove all rules and targets
             lock (_loggerPool)
             {
-                // Remove this logger object from our pool and move on
-                bool Removed = _loggerPool.Remove(LoggerItem);
-                return Removed;
+                // Remove any loggers with a matching GUID or name value
+                LoggersRemoved += _loggerPool.RemoveAll(LoggerObj => LoggerObj.LoggerName == LoggerItem.LoggerName);
+                LoggersRemoved += _loggerPool.RemoveAll(LoggerObj => LoggerObj.LoggerGuid == LoggerItem.LoggerGuid);
             }
+            lock (_loggingRules)
+            {
+                // Store all the rule names first and remove all matches
+                List<string> LoggerRuleNames = LoggerItem.LoggerRules.Select(LogRule => LogRule.RuleName).ToList();
+                LoggerRulesRemoved += _loggingRules.RemoveAll(LogRule => LoggerRuleNames.Contains(LogRule.RuleName));
+            }
+            lock (_loggingTargets)
+            {
+                // Store all the target names first and remove all matches
+                List<string> LoggerTargetNames = LoggerItem.LoggerTargets.Select(LogTarget => LogTarget.Name).ToList();
+                LoggerTargetsRemoved += _loggingTargets.RemoveAll(LogTarget => LoggerTargetNames.Contains(LogTarget.Name));
+            }
+
+            // Return out based on the values of objects removed and if the logger pool holds our logger or not
+            lock (_loggerPool) return LoggersRemoved > 0 || (LoggerRulesRemoved > 0 && LoggerTargetsRemoved > 0) && !_loggerPool.Contains(LoggerItem);
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
