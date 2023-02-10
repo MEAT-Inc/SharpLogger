@@ -134,6 +134,9 @@ namespace SharpLogger_Tests
             // Assert that we've correctly loaded in the JSON configurations for this method
             Assert.IsTrue(this._brokerConfigs != null, "Broker configurations were unable to be imported!");
             Assert.IsTrue(this._brokerConfigs.Count != 0, "No broker configurations were found despite a passed import routine!");
+
+            // Log that we've completed importing all routines here
+            LoggerTestHelpers.LogTestMethodCompleted("Completed importing all test routines for Broker JSON Configurations!");
         }
         /// <summary>
         /// Test method used to build a new archiver configuration structure from a JSON payload
@@ -157,6 +160,9 @@ namespace SharpLogger_Tests
             // Assert that we've correctly loaded in the JSON configurations for this method
             Assert.IsTrue(this._archiveConfigs != null, "Archiver configurations were unable to be imported!");
             Assert.IsTrue(this._archiveConfigs.Count != 0, "No archiver configurations were found despite a passed import routine!");
+
+            // Log that we've completed importing all routines here
+            LoggerTestHelpers.LogTestMethodCompleted("Completed importing all test routines for Archiver JSON Configurations!");
         }
     }
 }

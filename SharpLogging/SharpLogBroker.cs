@@ -261,7 +261,9 @@ namespace SharpLogging
             _brokerCreated = DateTime.Now;
             LogBrokerConfig = BrokerConfig;
             LogBrokerName = string.IsNullOrWhiteSpace(BrokerConfig.LogBrokerName)
-                ? AppDomain.CurrentDomain.FriendlyName.Replace(" ","-")
+                ? AppDomain.CurrentDomain.FriendlyName
+                    .Split(Path.DirectorySeparatorChar).Last()
+                    .Split('.')[0].Replace(" ", string.Empty)
                 : BrokerConfig.LogBrokerName;
 
             // Check our logging level values provided in our configurations and see what needs to be updated
