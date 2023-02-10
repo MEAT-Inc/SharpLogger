@@ -1,29 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using NLog;
 using NLog.Config;
 using NLog.Layouts;
 using NLog.Targets;
-using NLog.Targets.Wrappers;
 
-namespace SharpLogger
+namespace SharpLogging
 {
     /// <summary>
     /// Main Logger object setup for logging to different output types/formats.
     /// </summary>
-    public class SharpLogger : INotifyPropertyChanged
+    public class SharpLogger : INotifyPropertyChanged, IDisposable
     {
         #region Custom Events
 
-        // Event handler for when properties on this logger instance are changed
+        // Event handler for when properties or collections on this logger instance are changed
         public event PropertyChangedEventHandler PropertyChanged;
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace SharpLogger
         protected virtual void OnPropertyChanged([CallerMemberName] string PropertyName = null)
         {
             // Invoke the event handler using a new event argument object if it's not null
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
+            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(PropertyName));
         }
         /// <summary>
         /// Sets the backing FieldToUpdate for a property when called
@@ -49,7 +49,7 @@ namespace SharpLogger
             if (!EqualityComparer<T>.Default.Equals(FieldToUpdate, FieldValue))
             {
                 FieldToUpdate = FieldValue;
-                OnPropertyChanged(PropertyName);
+                this.OnPropertyChanged(PropertyName);
                 return true;
             }
 
@@ -57,30 +57,92 @@ namespace SharpLogger
             return false;
         }
 
+        /// <summary>
+        /// Event handler for when we update the rules stored on our logger instance
+        /// </summary>
+        /// <param name="SendingCollection">The collection of logger rules being updated</param>
+        /// <param name="EventArgs">The changes made to our collection of logger rules</param>
+        private void _loggerRulesOnCollectionChanged(object SendingCollection, NotifyCollectionChangedEventArgs EventArgs)
+        {
+            // Make sure we've got Added or Remove as the event type and make sure the sending list is usable
+            if ((int)EventArgs.Action is not 0 or 1) return; if (SendingCollection is not ObservableCollection<LoggingRule>)
+                throw new InvalidOperationException($"Error! Sending collection was invalid type of {SendingCollection.GetType().Name}!");
+
+            // Now find what's been added/removed from the collection and update our log broker
+            var UpdatedRules = EventArgs.Action == NotifyCollectionChangedAction.Add
+                ? EventArgs.NewItems.Cast<LoggingRule>()
+                : EventArgs.OldItems.Cast<LoggingRule>();
+            
+            // Update our log configuration based on the operation applied to our collection
+            var LoggerConfiguration = LogManager.Configuration;
+            foreach (var UpdatedRule in UpdatedRules)
+            {
+                // If adding, add new targets in. If removing, delete them now 
+                if (EventArgs.Action == NotifyCollectionChangedAction.Add)
+                    LoggerConfiguration.AddRule(UpdatedRule);
+                if (EventArgs.Action == NotifyCollectionChangedAction.Remove)
+                    LoggerConfiguration.RemoveRuleByName(UpdatedRule.RuleName);
+            }
+
+            // Store the new collection of logging rules on the log broker and exit out
+            LogManager.Configuration = LoggerConfiguration; 
+        }
+        /// <summary>
+        /// Event handler for when we update the targets stored on our logger instance
+        /// </summary>
+        /// <param name="SendingCollection">The collection of logger targets being updated</param>
+        /// <param name="EventArgs">The changes made to our collection of logger rules</param>
+        private void _loggerTargetsOnCollectionChanged(object SendingCollection, NotifyCollectionChangedEventArgs EventArgs)
+        {
+            // Make sure we've got Added or Remove as the event type and make sure the sending list is usable
+            if ((int)EventArgs.Action is not 0 or 1) return;
+            if (SendingCollection is not ObservableCollection<Target>)
+                throw new InvalidOperationException($"Error! Sending collection was invalid type of {SendingCollection.GetType().Name}!");
+
+            // Now find what's been added/removed from the collection and update our log broker
+            var UpdatedTargets = EventArgs.Action == NotifyCollectionChangedAction.Add
+                ? EventArgs.NewItems.Cast<Target>()
+                : EventArgs.OldItems.Cast<Target>();
+
+            // Update our log configuration based on the operation applied to our collection
+            var LoggerConfiguration = LogManager.Configuration;
+            foreach (var UpdatedTarget in UpdatedTargets)
+            {
+                // If adding, add new targets in. If removing, delete them now 
+                if (EventArgs.Action == NotifyCollectionChangedAction.Add)
+                    LoggerConfiguration.AddTarget(UpdatedTarget);
+                if (EventArgs.Action == NotifyCollectionChangedAction.Remove)
+                    LoggerConfiguration.RemoveTarget(UpdatedTarget.Name);
+            }
+
+            // Store the new collection of logging rules on the log broker and exit out
+            LogManager.Configuration = LoggerConfiguration;
+        }
+
         #endregion //Custom Events
 
         #region Fields
 
         // Private backing fields which hold information about our logger instance
-        private Guid _loggerGuid;                                         // The GUID of this logger object
-        private string _loggerName;                                       // The Name of this logger object
-        private string _loggerClass;                                      // The class which called this logger
-        private DateTime _timeCreated;                                    // The time this logger object was built
+        private Guid _loggerGuid;                                           // The GUID of this logger object
+        private string _loggerName;                                         // The Name of this logger object
+        private string _loggerClass;                                        // The class which called this logger
+        private DateTime _timeCreated;                                      // The time this logger object was built
 
         // Backing fields holding information about the logger levels and actions
-        private LogLevel _minLevel;                                       // Lowest level of supported logging output
-        private LogLevel _maxLevel;                                       // Highest level of supported logging output
-        private LoggerActions _loggerType;                                // Type of logger being built/controlled
-        private readonly Logger _nLogger;                                 // NLog object that does our output writing
+        private LogLevel _minLevel;                                         // Lowest level of supported logging output
+        private LogLevel _maxLevel;                                         // Highest level of supported logging output
+        private LoggerActions _loggerType;                                  // Type of logger being built/controlled
+        private readonly Logger _nLogger;                                   // NLog object that does our output writing
 
         // Private fields holding information about our built target objects
-        private readonly List<Target> _loggerTargets;                     // Collection of built targets for this logger
-        private readonly List<AsyncTargetWrapper> _asyncWrappers;         // A collection of async target wrappers for our logger
+        private readonly ObservableCollection<Target> _loggerTargets;       // Collection of built targets for this logger
+        private readonly ObservableCollection<LoggingRule> _loggerRules;    // A collection of rules related to each target
 
         // Private backing fields which hold our format configurations for output
-        private SharpFileTargetFormat _fileLoggerFormat;                  // Configuration to build File format strings
-        private SharpConsoleTargetFormat _consoleLoggerFormat;            // Configuration to build Console format strings
-
+        private SharpFileTargetFormat _fileLoggerFormat;                    // Configuration to build File format strings
+        private SharpConsoleTargetFormat _consoleLoggerFormat;              // Configuration to build Console format strings
+        
         #endregion //Fields
 
         #region Properties
@@ -132,16 +194,34 @@ namespace SharpLogger
             SharpLogBroker.LoggingEnabled && 
             (this._minLevel != LogLevel.Off && this._maxLevel != LogLevel.Off);
 
+        // Public facing properties to hold our logging rules and targets
+        public Target[] LoggerTargets
+        {
+            get
+            {
+                // Lock the collection of targets and return it out as an array
+                lock (_loggerTargets) return _loggerTargets.ToArray();
+            }
+        }
+        public LoggingRule[] LoggerRules
+        {
+            get
+            {
+                // Lock the collection of rules and return it out as an array
+                lock (_loggerRules) return _loggerRules.ToArray();
+            }
+        }
+
         // Public facing properties holding our configurations for format output strings
         public SharpFileTargetFormat FileTargetFormat
         {
             get => this._fileLoggerFormat ??= SharpLogBroker.DefaultFileFormat;
-            set => this._fileLoggerFormat = value;
+            set => this.SetField(ref this._fileLoggerFormat, value);
         }
         public SharpConsoleTargetFormat ConsoleTargetFormat
         {
             get => this._consoleLoggerFormat ??= SharpLogBroker.DefaultConsoleFormat;
-            set => this._consoleLoggerFormat = value;
+            set => this.SetField(ref this._consoleLoggerFormat, value);
         }
 
         // Public facing collection of supported logging types
@@ -150,7 +230,6 @@ namespace SharpLogger
             get => this._loggerType;
             set => this.SetField(ref this._loggerType, value);
         }
-        public bool IsAsyncLogger => this._loggerType.HasFlag(LoggerActions.AsyncLogger);
         public bool IsUniversalLogger => this._loggerType.HasFlag(LoggerActions.UniversalLogger);
         public bool IsFileLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.FileLogger);
         public bool IsConsoleLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.ConsoleLogger);
@@ -163,13 +242,55 @@ namespace SharpLogger
         // ------------------------------------------------------------------------------------------------------------------------------------------
 
         /// <summary>
+        /// Overrides the ToString call on a logger object to return a friendly logger name string
+        /// </summary>
+        /// <returns>String holding information about this logger</returns>
+        public override string ToString()
+        {
+            // Build and return a new string value here
+            string LoggerString = $"{this.LoggerName} ({this.LoggerType}) - {this.LoggerRules.Length} Rules and {this.LoggerTargets.Length} Targets";
+            return LoggerString;
+        }
+        /// <summary>
+        /// Routine to run when this logger instance is destroyed/released from the broker
+        /// </summary>
+        public void Dispose()
+        {
+            try
+            {
+                // Lock our rules and targets to avoid issues with access
+                lock (this._loggerRules) lock (this._loggerTargets)
+                {
+                    // Remove all the rules and targets using the event handler to we clear out of the broker list too
+                    for (int RuleIndex = 0; RuleIndex < this._loggerRules.Count; RuleIndex++)
+                            this._loggerRules.RemoveAt(RuleIndex);
+                    for (int TargetIndex = 0; TargetIndex < this._loggerTargets.Count; TargetIndex++)
+                        this._loggerTargets.RemoveAt(TargetIndex);
+                }
+                
+                // Remove the logger from the Broker pool and log out that we've completed this routine.
+                SharpLogBroker.DestroyLogger(this);
+                SharpLogBroker.MasterLogger.WriteLog($"CLEARED OUT ALL RULES AND TARGETS FOR LOGGER {this.LoggerName}!", LogType.TraceLog);
+                SharpLogBroker.MasterLogger.WriteLog($"LOGGER {this.LoggerName} HAS BEEN REMOVED FROM OUR BROKER!", LogType.TraceLog);
+            }
+            catch (Exception DestroyLoggerEx)
+            {
+                // Log the Exception out using the log broker logger
+                SharpLogBroker.MasterLogger.WriteLog($"EXCEPTION THROWN DURING LOGGER REMOVAL PROCESS!", LogType.TraceLog);
+                SharpLogBroker.MasterLogger.WriteException($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
+            }
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
         /// Builds a new FalconLogger object and adds it to the logger pool.
         /// </summary>
         /// <param name="LoggerType">Type of actions/targets to configure for this logger</param>
         /// <param name="MinLevel">Min Log Level for output values being written</param>
         /// <param name="MaxLevel">Max Log Level for output values being written</param>
         /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
-        public SharpLogger(LoggerActions LoggerType, LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog, string LoggerName = "")
+        public SharpLogger(LoggerActions LoggerType, string LoggerName = "", LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog)
         {
             // Set Min and Max logging levels and make sure they comply with the logging broker
             this.MinLevel = SharpLogBroker.MinLevel == LogType.NoLogging
@@ -190,56 +311,54 @@ namespace SharpLogger
             this.LoggerGuid = Guid.NewGuid();
 
             // Store new name value for the logger based on the provided input value
-            LoggerName = string.IsNullOrWhiteSpace(LoggerName)
-                ? this._getCallingClass(true) : LoggerName;
+            LoggerName = string.IsNullOrWhiteSpace(LoggerName) ? this._getCallingClass(true) : LoggerName;
             this.LoggerName =  $"{LoggerName}_{LoggerGuid.ToString("D").ToUpper()}";
 
-            // Configure new logger targets based on the type of this logger
+            // Build new lists for our logger target types and store event handlers for processing changes
             LogManager.Configuration ??= new LoggingConfiguration();
-            this._nLogger = LogManager.GetCurrentClassLogger();
-
-            // Build new lists for our logger target types
-            this._loggerTargets = new List<Target>();
-            this._asyncWrappers = new List<AsyncTargetWrapper>();
+            this._loggerTargets = new ObservableCollection<Target>();
+            this._loggerRules = new ObservableCollection<LoggingRule>();
+            this._loggerRules.CollectionChanged += this._loggerRulesOnCollectionChanged;
+            this._loggerTargets.CollectionChanged += this._loggerTargetsOnCollectionChanged;
 
             // Now store new targets for these loggers based on the types provided
-            if (this.IsFileLogger || this.IsUniversalLogger) this._spawnFileTarget();
-            if (this.IsConsoleLogger || this.IsUniversalLogger) this._spawnConsoleTarget();
+            if (this.IsFileLogger || this.IsUniversalLogger)
+            {
+                // Spawn a new file logger and attempt to register it
+                var FileLoggerBuilt = this._spawnFileTarget(); 
+                if (!this.RegisterTarget(FileLoggerBuilt))
+                    throw new InvalidOperationException($"Error! Failed to spawn a file target for logger {this.LoggerName}!");
+            }
+            if (this.IsConsoleLogger || this.IsUniversalLogger)
+            {
+                // Spawn a new console logger and attempt to register it
+                var ConsoleLoggerBuilt = this._spawnConsoleTarget();
+                if (!this.RegisterTarget(ConsoleLoggerBuilt))
+                    throw new InvalidOperationException($"Error! Failed to spawn a console target for logger {this.LoggerName}!");
+            }
 
             // Print out some logger information values and store this logger in our broker pool
-            this.WriteLog($"LOGGER NAME: {this.LoggerName} HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
-            this.WriteLog($"--> TIME CREATED:  {this.TimeCreated:G}", LogType.TraceLog);
-            this.WriteLog($"--> LOGGER GUID:   {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
-            this.WriteLog($"--> IS ASYNC:      {(this.IsAsyncLogger ? "YES" : "NO")}", LogType.TraceLog);
-            this.WriteLog($"--> IS UNIVERSAL:  {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
-            this.WriteLog($"--> TARGET COUNT:  {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
+            this._nLogger = LogManager.GetLogger(this.LoggerName);
+            this.WriteLog($"LOGGER '{this.LoggerName}' HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
+            this.WriteLog($"\\__ TIME CREATED:   {this.TimeCreated:G}", LogType.TraceLog);
+            this.WriteLog($"\\__ LOGGER GUID:    {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
+            this.WriteLog($"\\__ IS UNIVERSAL:   {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
+            this.WriteLog($"\\__ RULE COUNT:     {this._loggerRules.Count} RULES", LogType.TraceLog);
+            this.WriteLog($"\\__ TARGET COUNT:   {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
+            this.WriteLog($"\\__ LOGGER STRING:  {this}", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
-            SharpLogBroker.RegisterLogger(this);
+            if (!SharpLogBroker.RegisterLogger(this))
+                throw new InvalidOperationException("Error! Failed to register logger on the session broker!");
         }
         /// <summary>
         /// Routine to run when this logger instance is destroyed/released from the broker
         /// </summary>
         ~SharpLogger()
         {
-            try
-            {
-                // Begin by removing all the logging targets for this logger from our configuration
-                foreach (var LoggerTarget in this._loggerTargets)
-                    LogManager.Configuration.RemoveTarget(LoggerTarget.Name);
-                foreach (var AsyncLoggerTarget in this._asyncWrappers)
-                    LogManager.Configuration.RemoveTarget(AsyncLoggerTarget.Name);
-
-                // Remove the logger from the broker pool and
-                SharpLogBroker.DestroyLogger(this);
-                SharpLogBroker.MasterLogger.WriteLog($"LOGGER {this.LoggerName} HAS BEEN REMOVED FROM OUR BROKER!", LogType.TraceLog);
-            }
-            catch (Exception DestroyLoggerEx)
-            {
-                // Log the Exception out using the log broker logger
-                SharpLogBroker.MasterLogger.WriteLog($"EXCEPTION THROWN DURING LOGGER REMOVAL PROCESS!", LogType.TraceLog);
-                SharpLogBroker.MasterLogger.WriteException($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
-            }
+            // Run the dispose method on this object if it needs to be killed
+            if (SharpLogBroker.LoggerPool.Contains(this) || SharpLogBroker.FindLoggers(this.LoggerName).Any())
+                this.Dispose();
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -254,7 +373,6 @@ namespace SharpLogger
             // Make sure logging is not set to off right now
             if (!this.LoggingEnabled) return;
 
-            // Configure a set of new scope properties for our output content log entries
             var ScopeProperties = new KeyValuePair<string, object>[]
             {
                 new("logger-class", this.LoggerClass),
@@ -302,28 +420,31 @@ namespace SharpLogger
             // Using the built scope properties, write our log entries out to the targets now
             using (this._nLogger.PushScopeProperties(ScopeProperties))
             {
-                // Write Exception values
-                this._nLogger.Log(Level.ToNLevel(), $"LoggedEx Message {LoggedEx.Message}");
-                this._nLogger.Log(Level.ToNLevel(), $"LoggedEx Source  {LoggedEx.Source}");
-                this._nLogger.Log(Level.ToNLevel(), $"LoggedEx Target  {LoggedEx.TargetSite.Name}");
+                // If the exception thrown is null, don't do any of this
+                if (LoggedEx == null) return;
 
-                // Write the LoggedEx Stack trace and the inner exceptions if they're not null
-                if (LoggedEx.StackTrace != null) this._nLogger.Log(Level.ToNLevel(), $"LoggedEx Stack\n{LoggedEx.StackTrace}");
-                if (LoggedEx.InnerException != null)
-                {
-                    // If our inner exception is not null, run it through this logger.
-                    this._nLogger.Log(Level.ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
-                    this.WriteException(LoggedEx.InnerException, Level);
-                }
+                // Log out information about the exception being thrown
+                this._nLogger.Log(Level.ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx?.TargetSite}. DETAILS ARE SHOWN BELOW");
+                this._nLogger.Log(Level.ToNLevel(), $"\tEX MESSAGE {LoggedEx?.Message}");
+                this._nLogger.Log(Level.ToNLevel(), $"\tEX SOURCE  {LoggedEx?.Source}");
+                this._nLogger.Log(Level.ToNLevel(), $"\tEX TARGET  {LoggedEx?.TargetSite?.Name}");
+                this._nLogger.Log(Level.ToNLevel(),
+                    LoggedEx?.StackTrace == null
+                        ? "FURTHER DIAGNOSTIC INFO IS NOT AVAILABLE AT THIS TIME."
+                        : $"\tEX STACK\n{LoggedEx.StackTrace.Replace("\n", "\n\t")}");
+
+                // If our inner exception is not null, run it through this logger.
+                this._nLogger.Log(Level.ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
+                this.WriteException($"{LoggedEx.GetType().Name} -- INNER EXCEPTION", LoggedEx.InnerException, Level);
             }
         }
         /// <summary>
         /// Writes an exception object out.
         /// </summary>
         /// <param name="MessageExInfo">Info message</param>
-        /// <param name="Ex">LoggedEx to write</param>
+        /// <param name="LoggedEx">LoggedEx to write</param>
         /// <param name="LogLevels">Levels. Msg and then LoggedEx</param>
-        public void WriteException(string MessageExInfo, Exception Ex, params LogType[] LogLevels)
+        public void WriteException(string MessageExInfo, Exception LoggedEx, params LogType[] LogLevels)
         {
             // Check level count and make sure logging is set to on
             if (!this.LoggingEnabled) return;
@@ -341,19 +462,23 @@ namespace SharpLogger
             // Write Log Message then exception and all information found from the exception here
             using (this._nLogger.PushScopeProperties(ScopeProperties))
             {
+                // If the exception thrown is null, don't do any of this
+                if (LoggedEx == null) return;
+
+                // Log out information about the exception being thrown
                 this._nLogger.Log(LogLevels[0].ToNLevel(), MessageExInfo);
-                this._nLogger.Log(LogLevels[0].ToNLevel(), $"EXCEPTION THROWN FROM {Ex.TargetSite}. DETAILS ARE SHOWN BELOW");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX MESSAGE {Ex.Message}");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX SOURCE  {Ex?.Source}");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX TARGET  {Ex.TargetSite?.Name}");
+                this._nLogger.Log(LogLevels[0].ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx?.TargetSite}. DETAILS ARE SHOWN BELOW");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX MESSAGE {LoggedEx?.Message}");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX SOURCE  {LoggedEx?.Source}");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX TARGET  {LoggedEx?.TargetSite?.Name}");
                 this._nLogger.Log(LogLevels[1].ToNLevel(),
-                    Ex.StackTrace == null
+                    LoggedEx?.StackTrace == null
                         ? "FURTHER DIAGNOSTIC INFO IS NOT AVAILABLE AT THIS TIME."
-                        : $"\tEX STACK\n{Ex.StackTrace.Replace("\n", "\n\t")}");
+                        : $"\tEX STACK\n{LoggedEx.StackTrace.Replace("\n", "\n\t")}");
 
                 // If our inner exception is not null, run it through this logger.
                 this._nLogger.Log(LogLevels[1].ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
-                this.WriteException(MessageExInfo, Ex.InnerException, LogLevels);
+                this.WriteException(MessageExInfo, LoggedEx.InnerException, LogLevels);
             }
         }
 
@@ -399,47 +524,84 @@ namespace SharpLogger
         // ------------------------------------------------------------------------------------------------------------------------------------------
 
         /// <summary>
+        /// Allows us to register new custom targets for a logger instance on the go
+        /// </summary>
+        /// <param name="TargetToRegister">The target we wish to add into this logger</param>
+        /// <returns>True if the target is built, false if it is not</returns>
+        public bool RegisterTarget(Target TargetToRegister)
+        {
+            // Lock our collection of targets before trying to query them
+            lock (this._loggerRules) lock (this._loggerTargets)
+            {
+                // Make sure we don't have this target anywhere before trying to add it in now 
+                if (this._loggerTargets.Any(ExistingTarget => ExistingTarget.Name == TargetToRegister.Name))
+                    return false;
+
+                // Now register a new rule for the file target and store it on the logging configuration for NLog
+                LoggingRule CustomTargetRule = new LoggingRule(
+                    $"*{this.LoggerGuid.ToString("D").ToUpper()}*",
+                    this._minLevel,
+                    this._maxLevel,
+                    TargetToRegister
+                );
+
+                // Finally insert the newly built rule and target onto our logger instance then exit out
+                this._loggerRules.Add(CustomTargetRule);
+                this._loggerTargets.Add(TargetToRegister);
+                return true;
+            }
+        }
+        /// <summary>
+        /// Allows us to register new custom targets for a logger instance on the go
+        /// </summary>
+        /// <param name="TargetToDestroy">The target we wish to add into this logger</param>
+        /// <returns>True if the target is built, false if it is not</returns>
+        public bool DestroyTarget(Target TargetToDestroy)
+        {
+            // Lock our collection of targets before trying to query them
+            lock (this._loggerRules) lock (this._loggerTargets)
+            {
+                // Make sure we don't have this target anywhere before trying to add it in now 
+                var RulesToRemove = this._loggerRules
+                    .Where(ExistingRule => ExistingRule.Targets.Contains(TargetToDestroy))
+                    .ToList();
+                var TargetsToRemove = this._loggerTargets
+                    .Where(ExistingTarget => ExistingTarget.Name != TargetToDestroy.Name)
+                    .ToList();
+
+                // Make sure we've got at least one or more object to remove out from our logger
+                if (RulesToRemove.Count == 0 && TargetsToRemove.Count == 0) return false;
+                foreach (var LoggingRule in RulesToRemove) this._loggerRules.Remove(LoggingRule);
+                foreach (var LoggingTarget in TargetsToRemove) this._loggerTargets.Remove(LoggingTarget);
+
+                // Once done removing targets and rule, return out passed
+                return true;
+            }
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
         /// Spawns a new FileTarget for this logger instance
         /// </summary>
         /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
         private FileTarget _spawnFileTarget()
         {
-            // Find the name of the log file we're writing into first
-            string LogFileName = Path.GetFileNameWithoutExtension(SharpLogBroker.LogFilePath);
-            string FileTargetName = $"{this.LoggerName}_{LogFileName}";
-
             // Build the new file target for our logger instance
-            var FileLoggerTarget = new FileTarget(FileTargetName);
+            var FileLoggerTarget = new FileTarget($"{this.LoggerName}_FileTarget");
             FileLoggerTarget.KeepFileOpen = false;
-            FileLoggerTarget.MaxArchiveFiles = 20;
             FileLoggerTarget.ConcurrentWrites = true;
-            FileLoggerTarget.ArchiveAboveSize = 1953125;
-            FileLoggerTarget.ArchiveEvery = FileArchivePeriod.Day;
             FileLoggerTarget.FileName = SharpLogBroker.LogFilePath;
             FileLoggerTarget.ArchiveNumbering = ArchiveNumberingMode.DateAndSequence;
             FileLoggerTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
-            FileLoggerTarget.ArchiveFileName = "${basedir}/LogArchives/" + SharpLogBroker.LogBrokerName + ".{####}.log";
 
-            // Register the new console logger target in the log manager configuration
-            this._loggerTargets.Add(FileLoggerTarget);
-            LogManager.Configuration.AddTarget(FileLoggerTarget);
-
-            // If the logger is async, then spawn an async target too and store it on this instance
-            if (this.IsAsyncLogger)
-            {
-                // Spawn the async target and store it on our instance
-                var AsyncConsoleTarget = this._convertToAsyncTarget(FileLoggerTarget);
-                this._asyncWrappers.Add(AsyncConsoleTarget);
-                LogManager.Configuration.AddTarget(AsyncConsoleTarget);
-            }
-
-            // Now return the built file logging target and exit out
+            // Return the newly built target instance without adding it to our configuration
             return FileLoggerTarget;
         }
         /// <summary>
-                 /// Spawns a new ColoredConsoleTarget for this logger instance
-                 /// </summary>
-                 /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
+        /// Spawns a new ColoredConsoleTarget for this logger instance
+        /// </summary>
+        /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
         private ColoredConsoleTarget _spawnConsoleTarget()
         {
             // Make Logger and set format.
@@ -472,46 +634,9 @@ namespace SharpLogger
                 ConsoleOutputColor.Red,
                 ConsoleOutputColor.White));
 
-            // Register the new console logger target in the log manager configuration
-            this._loggerTargets.Add(ConsoleLoggerTarget);
-            LogManager.Configuration.AddTarget(ConsoleLoggerTarget);
-
-            // If the logger is async, then spawn an async target too and store it on this instance
-            if (this.IsAsyncLogger)
-            {
-                // Spawn the async target and store it on our instance
-                var AsyncConsoleTarget = this._convertToAsyncTarget(ConsoleLoggerTarget);
-                this._asyncWrappers.Add(AsyncConsoleTarget);
-                LogManager.Configuration.AddTarget(AsyncConsoleTarget);
-            }
-
-            // Now return the built console logging target and exit out
+            // Return the newly built target instance without adding it to our configuration
             return ConsoleLoggerTarget;
         }
-       
-        /// <summary>
-        /// Wraps a built logging target into an async target instance and returns it out
-        /// </summary>
-        /// <param name="LoggingTarget">The target to convert</param>
-        /// <param name="MinLevel">The minimum logging level for the async target</param>
-        /// <returns>A Wrapped async target</returns>
-        private AsyncTargetWrapper _convertToAsyncTarget(Target LoggingTarget, LogType MinLevel = LogType.NoLogging)
-        {
-            // Build the wrapper object and convert our input target
-            AsyncTargetWrapper AsyncWrapper = new AsyncTargetWrapper();
-
-            // Configure properties of the async target object.
-            AsyncWrapper.QueueLimit = 5000;
-            AsyncWrapper.WrappedTarget = LoggingTarget;
-            AsyncWrapper.OverflowAction = AsyncTargetWrapperOverflowAction.Grow;
-
-            // Return the built target object.
-            var LogLevelParsed = MinLevel == LogType.NoLogging ? _minLevel : MinLevel.ToNLevel();
-            SimpleConfigurator.ConfigureForTargetLogging(AsyncWrapper, LogLevelParsed);
-            return AsyncWrapper;
-        }
-
-        // ------------------------------------------------------------------------------------------------------------------------------------------
 
         /// <summary>
         /// Gets the name of the calling method.
