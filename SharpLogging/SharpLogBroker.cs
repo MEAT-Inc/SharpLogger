@@ -232,7 +232,7 @@ namespace SharpLogging
 
             // Build the output string to return based on properties
             string OutputString =
-                $"Log Broker Information - '{LogBrokerName}' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"\n\nLog Broker Information - '{LogBrokerName}' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Broker Status:  {(_logBrokerInitialized ? "Log Broker Ready!" : "Not Configured!")}\n" +
                 $"\t\\__ Creation Time:  {_brokerCreated:g}\n" +
                 $"\t\\__ Logging State:  {(LoggingEnabled ? "Logging Currently ON" : "Logging Currently OFF")}\n" +
@@ -244,7 +244,7 @@ namespace SharpLogging
                 $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length != 1 ? "s" : string.Empty)} Constructed\n" +
                 $"\t\\__ Master Logger:  {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Broker Config (JSON):  {JsonConvert.SerializeObject(LogBrokerConfig)}" +
+                $"\t\\__ Broker Config (JSON):\n\t\t{JsonConvert.SerializeObject(LogBrokerConfig, Formatting.Indented).Replace("\n", "\n\t\t")}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
 
             // Return this built output string here
