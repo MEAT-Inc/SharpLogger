@@ -241,10 +241,11 @@ namespace SharpLogging
                 $"\t\\__ Log File Name:  {LogFileName}\n" +
                 $"\t\\__ Log File Path:  {LogFilePath}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length != 1 ? "s": string.Empty)} Constructed\n" +
+                $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length != 1 ? "s" : string.Empty)} Constructed\n" +
                 $"\t\\__ Master Logger:  {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Broker Config (JSON):  {JsonConvert.SerializeObject(LogBrokerConfig)}";
+                $"\t\\__ Broker Config (JSON):  {JsonConvert.SerializeObject(LogBrokerConfig)}" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
 
             // Return this built output string here
             return OutputString;
