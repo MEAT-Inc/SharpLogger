@@ -293,9 +293,7 @@ namespace SharpLogging
                 {
                     // If we found an actual file for the input path, we know that's the final result
                     LogFileName = Path.GetFileName(BrokerConfig.LogFilePath);
-                    LogFilePath = BrokerConfig.LogFilePath
-                        .Replace("\\\\", "\\")
-                        .Trim();
+                    LogFilePath = BrokerConfig.LogFilePath.Trim();
                 }
                 else if ((Directory.Exists(BrokerConfig.LogFilePath) || EndsWithDirChars) && !Path.HasExtension(BrokerConfig.LogFilePath))
                 {
@@ -306,19 +304,13 @@ namespace SharpLogging
                         : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName)}_{LoggerTime}{Path.GetExtension(BrokerConfig.LogFileName)}";
 
                     // Build the full path based on the default output location and the log file name pulled in
-                    LogFilePath = Path.Combine(BrokerConfig.LogFilePath, LogFileName).Replace("\\\\", "\\").Trim();
-                    if (!Directory.Exists(BrokerConfig.LogFilePath)) Directory.CreateDirectory(BrokerConfig.LogFilePath);
+                    LogFilePath = Path.Combine(BrokerConfig.LogFilePath, LogFileName);
                 }
                 else if (Path.HasExtension(BrokerConfig.LogFilePath) && !EndsWithDirChars)
                 {
                     // If the path provided is an actual file name that isn't real, build a path for it
                     LogFileName = Path.GetFileName(BrokerConfig.LogFilePath);
-                    LogFilePath = BrokerConfig.LogFilePath
-                        .Replace("\\\\", "\\")
-                        .Trim();
-
-                    // Make sure the path exists now before moving on
-                    if (!Directory.Exists(LogFilePath)) Directory.CreateDirectory(LogFilePath);
+                    LogFilePath = BrokerConfig.LogFilePath.Trim();
                 }
                 else
                 {
@@ -327,6 +319,14 @@ namespace SharpLogging
                     throw new ArgumentException($"Error! Broker configuration could not be used to setup logging! ({ArgNameAndValue})");
                 }
             }
+
+            // Clean up double slash values in our file and path names.
+            LogFileName = LogFileName.Replace("\\\\", "\\").Trim();
+            LogFilePath = LogFilePath.Replace("\\\\", "\\").Trim();
+
+            // Using the newly build path and file name values, setup an output folder if it needs to be built
+            string OutputFolder = LogFilePath.Replace(LogFileName, string.Empty).Trim();
+            if (!Directory.Exists(OutputFolder)) Directory.CreateDirectory(OutputFolder);
 
             // Update our configuration to reflect the newly determined values for files
             _logBrokerConfig.MaxLogLevel = MaxLevel;
@@ -345,7 +345,7 @@ namespace SharpLogging
 
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             LogManager.Configuration = new LoggingConfiguration();
-            MasterLogger = new SharpLogger(LoggerActions.UniversalLogger);
+            MasterLogger = new SharpLogger(LoggerActions.UniversalLogger,"LogBrokerLogger");
             MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
             MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!", LogType.InfoLog);
             MasterLogger.WriteLog(SharpLogBroker.ToString(), LogType.TraceLog);

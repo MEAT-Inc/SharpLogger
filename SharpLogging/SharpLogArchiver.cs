@@ -267,7 +267,7 @@ namespace SharpLogging
             if (_logArchiveConfig.SearchPath == null || !Directory.Exists(_logArchiveConfig.SearchPath)) return false;
 
             // Configure a new logger for this archive helper. Then try to build sets of files to archive
-            _archiveLogger = new SharpLogger(LoggerActions.UniversalLogger);
+            _archiveLogger = new SharpLogger(LoggerActions.UniversalLogger, "LogArchiverLogger");
             _archiveLogger.WriteLog("ARCHIVE HELPER BUILT WITHOUT ISSUES! READY TO PULL IN ARCHIVES USING PROVIDED CONFIGURATION!", LogType.InfoLog);
             _archiveLogger.WriteLog(SharpLogArchiver.ToString(), LogType.TraceLog);
 

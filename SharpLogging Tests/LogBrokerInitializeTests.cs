@@ -87,7 +87,7 @@ namespace SharpLogger_Tests
             Assert.IsTrue(SharpLogBroker.MasterLogger != null, "Error! Master logger for a broker instance was null!");
 
             // Log some basic information out and spawn a new logger for testing
-            var SpawnedLogger = new SharpLogger(LoggerActions.FileLogger);
+            var SpawnedLogger = new SharpLogger(LoggerActions.FileLogger, "TestFileLogger");
             SpawnedLogger.WriteLog($"SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME {SpawnedLogger.LoggerName}!", LogType.InfoLog);
             Assert.IsTrue(SharpLogBroker.FindLoggers(SpawnedLogger.LoggerName).Count() != 0, "Error! Could not find spawned logger!");
 
@@ -121,7 +121,7 @@ namespace SharpLogger_Tests
             Assert.IsTrue(SharpLogBroker.MasterLogger != null, "Error! Master logger for a broker instance was null!");
 
             // Log some basic information out and spawn a new logger for testing
-            var SpawnedLogger = new SharpLogger(LoggerActions.ConsoleLogger);
+            var SpawnedLogger = new SharpLogger(LoggerActions.ConsoleLogger, "TestConsoleLogger");
             SpawnedLogger.WriteLog($"SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME {SpawnedLogger.LoggerName}!", LogType.InfoLog);
             Assert.IsTrue(SharpLogBroker.FindLoggers(SpawnedLogger.LoggerName).Count() != 0, "Error! Could not find spawned logger!");
 

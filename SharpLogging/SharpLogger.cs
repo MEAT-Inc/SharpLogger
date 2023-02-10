@@ -290,7 +290,7 @@ namespace SharpLogging
         /// <param name="MinLevel">Min Log Level for output values being written</param>
         /// <param name="MaxLevel">Max Log Level for output values being written</param>
         /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
-        public SharpLogger(LoggerActions LoggerType, LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog, string LoggerName = "")
+        public SharpLogger(LoggerActions LoggerType, string LoggerName = "", LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog)
         {
             // Set Min and Max logging levels and make sure they comply with the logging broker
             this.MinLevel = SharpLogBroker.MinLevel == LogType.NoLogging
@@ -322,7 +322,6 @@ namespace SharpLogging
             this._loggerTargets.CollectionChanged += this._loggerTargetsOnCollectionChanged;
 
             // Now store new targets for these loggers based on the types provided
-            this._nLogger = LogManager.GetCurrentClassLogger();
             if (this.IsFileLogger || this.IsUniversalLogger)
             {
                 // Spawn a new file logger and attempt to register it
@@ -339,12 +338,14 @@ namespace SharpLogging
             }
 
             // Print out some logger information values and store this logger in our broker pool
-            this.WriteLog($"LOGGER NAME: {this.LoggerName} HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
-            this.WriteLog($"\\__ TIME CREATED:  {this.TimeCreated:G}", LogType.TraceLog);
-            this.WriteLog($"\\__ LOGGER GUID:   {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
-            this.WriteLog($"\\__ IS UNIVERSAL:  {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
-            this.WriteLog($"\\__ RULE COUNT:    {this._loggerRules.Count} RULES", LogType.TraceLog);
-            this.WriteLog($"\\__ TARGET COUNT:  {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
+            this._nLogger = LogManager.GetLogger(this.LoggerName);
+            this.WriteLog($"LOGGER '{this.LoggerName}' HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
+            this.WriteLog($"\\__ TIME CREATED:   {this.TimeCreated:G}", LogType.TraceLog);
+            this.WriteLog($"\\__ LOGGER GUID:    {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
+            this.WriteLog($"\\__ IS UNIVERSAL:   {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
+            this.WriteLog($"\\__ RULE COUNT:     {this._loggerRules.Count} RULES", LogType.TraceLog);
+            this.WriteLog($"\\__ TARGET COUNT:   {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
+            this.WriteLog($"\\__ LOGGER STRING:  {this.ToString()}", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
             if (!SharpLogBroker.RegisterLogger(this))
@@ -538,7 +539,7 @@ namespace SharpLogging
 
                 // Now register a new rule for the file target and store it on the logging configuration for NLog
                 LoggingRule CustomTargetRule = new LoggingRule(
-                    this.LoggerName,
+                    $"*{this.LoggerGuid.ToString("D").ToUpper()}*",
                     this._minLevel,
                     this._maxLevel,
                     TargetToRegister
@@ -586,12 +587,8 @@ namespace SharpLogging
         /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
         private FileTarget _spawnFileTarget()
         {
-            // Find the name of the log file we're writing into first
-            string LogFileName = Path.GetFileNameWithoutExtension(SharpLogBroker.LogFilePath);
-            string FileTargetName = $"{this.LoggerName}_{LogFileName}";
-
             // Build the new file target for our logger instance
-            var FileLoggerTarget = new FileTarget(FileTargetName);
+            var FileLoggerTarget = new FileTarget($"{this.LoggerName}_FileTarget");
             FileLoggerTarget.KeepFileOpen = false;
             FileLoggerTarget.ConcurrentWrites = true;
             FileLoggerTarget.FileName = SharpLogBroker.LogFilePath;
