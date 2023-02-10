@@ -268,7 +268,7 @@ namespace SharpLogging
             if (_logArchiveConfig.ArchiveOnFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 20;
             if (_logArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchiveFileFilter)) 
-                _logArchiveConfig.ArchiveFileFilter = $"{SharpLogBroker.LogBrokerName}*.*";
+                _logArchiveConfig.ArchiveFileFilter = $"{SharpLogBroker.LogFileName.Split('_').FirstOrDefault()}*.*";
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchivePath))
                 _logArchiveConfig.ArchivePath = _defaultArchivePath.Replace("\\\\", "\\").Trim();
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.SearchPath))
