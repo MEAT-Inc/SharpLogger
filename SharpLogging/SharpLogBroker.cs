@@ -244,7 +244,7 @@ namespace SharpLogging
                 $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length != 1 ? "s" : string.Empty)} Constructed\n" +
                 $"\t\\__ Master Logger:  {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Broker Config (JSON):\n\t\t\t{JsonConvert.SerializeObject(LogBrokerConfig, Formatting.Indented).Replace("\n", "\n\t\t")}\n" +
+                $"\t\\__ Broker Config (JSON):\n\t\t{JsonConvert.SerializeObject(LogBrokerConfig, Formatting.Indented).Replace("\n", "\n\t\t")}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
 
             // Return this built output string here
