@@ -228,7 +228,7 @@ namespace SharpLogging
 
             // Build the output string to return based on properties
             string OutputString =
-                $"\n\nLog Archiver Information - {SharpLogBroker.LogBrokerName} (Archives) - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"\n\nLog Archiver Information - '{SharpLogBroker.LogBrokerName} (Archives)' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Archiver State:  {(_logArchiverInitialized ? "Archiver Ready!" : "Archiver Not Configured!")}\n" +
                 $"\t\\__ Creation Time:   {_archiverCreated:g}\n" +
                 $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} file{(LogArchiveConfig.ArchiveFileSetSize != 1 ? "s" : string.Empty)}\n" +
