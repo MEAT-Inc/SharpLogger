@@ -134,18 +134,8 @@ namespace SharpLogger_Tests
         [TestMethod("Spawn Console Logger")]
         public void SpawnConsoleLoggers()
         {
-            // Spawn a new test class for our JSON importing routines first
-            string BrokerConfigJson =
-                @"{ 
-                    ""LogBrokerName"": ""SharpLoggingTests"",
-                    ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging"",
-                    ""LogFileName"": ""SharpLoggingTests_OutputResults.log"",
-                    ""MinLogLevel"": ""TraceLog"",
-                    ""MaxLogLevel"": ""FatalLog"" 
-                }";
-
             // Assert we loaded in all of our configurations correctly
-            var BrokerConfig = JsonConvert.DeserializeObject<SharpLogBroker.BrokerConfiguration>(BrokerConfigJson);
+            var BrokerConfig = JsonConvert.DeserializeObject<SharpLogBroker.BrokerConfiguration>(this._brokerConfigJson);
             Assert.IsTrue(BrokerConfig.LogBrokerName != null, "Error! Broker configuration failed to build!");
 
             // Setup our log broker now
