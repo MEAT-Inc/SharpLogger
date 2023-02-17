@@ -89,11 +89,11 @@ The SharpLogger supports three main logging output types at this point, with sup
             ----------------------------------------------------------------------------------------------------
             \__ Broker Config (JSON):
                 {
-                "LogBrokerName": "MyCoolCSharpApp",
-                "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-111747.log",
-                "LogFileName": "MyCoolCSharpApp_Logging_02172023-111747.log",
-                "MinLogLevel": "TraceLog",
-                "MaxLogLevel": "FatalLog"
+                    "LogBrokerName": "MyCoolCSharpApp",
+                    "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-111747.log",
+                    "LogFileName": "MyCoolCSharpApp_Logging_02172023-111747.log",
+                    "MinLogLevel": "TraceLog",
+                    "MaxLogLevel": "FatalLog"
                 }
             ----------------------------------------------------------------------------------------------------
         ```
