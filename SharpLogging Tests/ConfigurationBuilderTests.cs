@@ -51,17 +51,17 @@ namespace SharpLogger_Tests
                     { 
                         ""LogBrokerName"": ""SharpLoggingTests"",
                         ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging\\"",
-                        ""LogFileName"": null,
+                        ""LogFileName"": ""SharpLoggingTests_$LOGGER_TIME.log"",
                         ""MinLogLevel"": ""TraceLog"",
                         ""MaxLogLevel"": ""FatalLog"" 
                     },
                     {
                         ""LogBrokerName"": ""SharpLoggingTests"",
-                         ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging\\SharpLoggerTests_DefinedLog.log"",
+                         ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging\\SharpLoggingTests_TestResults.log"",
                          ""LogFileName"": null,
                          ""MinLogLevel"": ""TraceLog"",
                          ""MaxLogLevel"": ""FatalLog""
-                    } 
+                    },
                 ], 
                 ""ArchiverConfigStrings"": [ 
                     { 
