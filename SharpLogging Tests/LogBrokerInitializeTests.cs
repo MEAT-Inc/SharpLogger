@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -85,6 +86,54 @@ namespace SharpLogger_Tests
             LoggerTestHelpers.LogTestMethodCompleted("Completed importing all test routines for JSON Configurations!");
         }
         /// <summary>
+        /// Test method used to configure a new log broker using the code snippets found in the README file for this repository.
+        /// Cant be giving out bad code samples now can we.
+        /// </summary>
+        [TestMethod("Initialize Log Broker (README Snippets)")]
+        public void InitializeLogBrokerForDocs()
+        {
+            // Split our console output and build a new configuration
+            LoggerTestHelpers.SeparateConsole();
+
+            // Define a new log broker configuration and setup the log broker
+            SharpLogBroker.BrokerConfiguration BrokerConfiguration = new SharpLogBroker.BrokerConfiguration()
+            {
+                LogBrokerName = "MyCoolCSharpApp",                                  // Name of the logging session
+                LogFileName = "MyCoolCSharpApp_Logging_$LOGGER_TIME.log",           // Name of the log file to write
+                LogFilePath = "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp",    // Path to the log file to write
+                MinLogLevel = LogType.TraceLog,                                     // The lowest level of logging
+                MaxLogLevel = LogType.FatalLog                                      // The highest level of logging
+            };
+
+            // Using the built configuration object, we can now initialize our log broker.
+            if (!SharpLogBroker.InitializeLogging(BrokerConfiguration))
+                throw new InvalidOperationException("Error! Failed to configure a new SharpLogging session!");
+
+            // Now define a new log archiver configuration and setup the log archiver
+            SharpLogArchiver.ArchiveConfiguration ArchiverConfiguration = new SharpLogArchiver.ArchiveConfiguration()
+            {
+                SearchPath = null,                                   // The path to search for files to archive
+                ArchivePath = null,                                  // The path to store the archived files into
+                ArchiveFileFilter = null,                            // The filter to use when searching for archives
+                ArchiveFileSetSize = 15,                             // The number of files to store in each archive
+                ArchiveOnFileCount = 20,                             // The number of files to trigger an archive event
+                ArchiveCleanupFileCount = 50,                        // The max number of archives to store in the ArchivePath
+                CompressionLevel = CompressionLevel.Optimal,         // The compression type for the archive generation
+                CompressionStyle = CompressionType.ZipCompression    // The type of archive to make (Zip or GZip)
+            };
+
+            // Using the built configuration object, we can now initialize our log archiver.
+            if (!SharpLogArchiver.InitializeArchiving(ArchiverConfiguration))
+                throw new InvalidOperationException("Error! Failed to configure the SharpArchiver!");
+
+            // Log some basic information out and spawn a new logger for testing
+            var TestFileLogger = new SharpLogger(LoggerActions.FileLogger, "TestFileLogger");
+            TestFileLogger.WriteLog($"SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME {TestFileLogger.LoggerName}!", LogType.InfoLog);
+
+            // Once done, log this test is completed and exit out 
+            LoggerTestHelpers.LogTestMethodCompleted("Completed loading configurations for the \"README Broker Setup Snippets\" test without issues!");
+        }
+        /// <summary>
         /// Builds a new log broker and archiver configuration and applies them. This is the closest test to a real deployed environment
         /// </summary>
         [TestMethod("Initialize Log Broker (Release Use)")]
@@ -134,18 +183,8 @@ namespace SharpLogger_Tests
         [TestMethod("Spawn Console Logger")]
         public void SpawnConsoleLoggers()
         {
-            // Spawn a new test class for our JSON importing routines first
-            string BrokerConfigJson =
-                @"{ 
-                    ""LogBrokerName"": ""SharpLoggingTests"",
-                    ""LogFilePath"": ""C:\\Program Files (x86)\\MEAT Inc\\SharpLogging"",
-                    ""LogFileName"": ""SharpLoggingTests_OutputResults.log"",
-                    ""MinLogLevel"": ""TraceLog"",
-                    ""MaxLogLevel"": ""FatalLog"" 
-                }";
-
             // Assert we loaded in all of our configurations correctly
-            var BrokerConfig = JsonConvert.DeserializeObject<SharpLogBroker.BrokerConfiguration>(BrokerConfigJson);
+            var BrokerConfig = JsonConvert.DeserializeObject<SharpLogBroker.BrokerConfiguration>(this._brokerConfigJson);
             Assert.IsTrue(BrokerConfig.LogBrokerName != null, "Error! Broker configuration failed to build!");
 
             // Setup our log broker now

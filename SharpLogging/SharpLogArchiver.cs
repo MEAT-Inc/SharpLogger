@@ -62,10 +62,7 @@ namespace SharpLogging
         #endregion //Custom Events
 
         #region Fields
-
-        // Default private field holding our base output location for archives 
-        private const string _defaultArchivePath = SharpLogBroker._defaultOutputPath + "\\" + "LogArchives";
-
+        
         // Private logger instance and backing archive configuration
         private static SharpLogger _archiveLogger;                                 // SharpLogger instance used to write information about archiving
         private static ArchiveConfiguration _logArchiveConfig;                     // Configuration to track how to archive our output files
@@ -110,12 +107,10 @@ namespace SharpLogging
             #region Fields
 
             // Public facing field for the archive location and the location to search
-            [DefaultValue(SharpLogBroker._defaultOutputPath)]
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string SearchPath = SharpLogBroker._defaultOutputPath;
-            [DefaultValue(_defaultArchivePath)] 
+            public string SearchPath = AppDomain.CurrentDomain.BaseDirectory;
             [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string ArchivePath = _defaultArchivePath;
+            public string ArchivePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "LogArchives");
 
             // The default file filtering name value for an archive configuration
             [DefaultValue("*.*")] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
@@ -254,10 +249,14 @@ namespace SharpLogging
         /// <returns>True if the configuration is loaded and usable. False if not</returns>
         public static bool InitializeArchiving(ArchiveConfiguration ArchiveConfig)
         {
+            // If the log broker is not built, then we can't run this routine. 
+            if (!SharpLogBroker.LogBrokerInitialized)
+                throw new InvalidOperationException("Error! Please configure the SharpLogBroker before configuring archiving!");
+
             // Configure new values for the archive timer, the archived files, and build a new configuration
             _archiveTimer = new Stopwatch();
-            _logArchiveConfig = ArchiveConfig;
             _archiverCreated = DateTime.Now;
+            _logArchiveConfig = ArchiveConfig;
 
             // Configure our backing fields here
             _archiveOutputFiles = new List<string>();
@@ -268,12 +267,18 @@ namespace SharpLogging
             if (_logArchiveConfig.ArchiveFileSetSize <= 0) _logArchiveConfig.ArchiveFileSetSize = 15;
             if (_logArchiveConfig.ArchiveOnFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 20;
             if (_logArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
-            if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchiveFileFilter)) 
-                _logArchiveConfig.ArchiveFileFilter = $"{SharpLogBroker.LogFileName.Split('_').FirstOrDefault()}*.*";
+            if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchiveFileFilter))
+            {
+                // Find the needed splitting character for the search filter to build and build the new filter value
+                char SplittingChar = SharpLogBroker.LogFileName.Contains("_") ? '_' : '.';
+                _logArchiveConfig.ArchiveFileFilter = $"{SharpLogBroker.LogFileName.Split(SplittingChar).FirstOrDefault()}*.*";
+            }
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchivePath))
-                _logArchiveConfig.ArchivePath = _defaultArchivePath.Replace("\\\\", "\\").Trim();
+                _logArchiveConfig.ArchivePath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.SearchPath))
-                _logArchiveConfig.SearchPath = SharpLogBroker._defaultOutputPath.Replace("\\\\", "\\").Trim();
+                _logArchiveConfig.SearchPath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
+            if (_logArchiveConfig.SearchPath == _logArchiveConfig.ArchivePath)
+                _logArchiveConfig.ArchivePath = Path.GetFullPath(Path.Combine(_logArchiveConfig.ArchivePath, "LogArchives"));
 
             // Ensure our new archive configuration values can be used for this routine
             if (_logArchiveConfig.SearchPath == null || !Directory.Exists(_logArchiveConfig.SearchPath)) return false;
@@ -347,6 +352,15 @@ namespace SharpLogging
         /// <returns>True if all archive objects were configured and built. False if any of them failed</returns>
         public static bool ArchiveLogFiles()
         {
+            // Make sure archiving is configured first
+            if (!_logArchiverInitialized)
+            {
+                // Log out that archiving is not configured and must be setup
+                SharpLogBroker.MasterLogger.WriteLog("ERROR! THE LOG ARCHIVER HAS NOT YET BEEN CONFIGURED! PLEASE SET IT UP BEFORE ARCHIVING!");
+                SharpLogBroker.MasterLogger.WriteException(new InvalidOperationException("Error! Please setup the SharpLogArchiver before using it"));
+                return false;
+            }
+
             // Log that we're starting to build output Archive Zip files now 
             _archiveLogger.WriteLog($"BUILDING ARCHIVE LOG FILE SETS FROM ARCHIVE PATH {LogArchiveConfig.SearchPath} NOW...", LogType.InfoLog);
 
@@ -407,6 +421,15 @@ namespace SharpLogging
         /// <returns>True if all archive sets are removed, false if they are not</returns>
         public static bool CleanupArchiveHistory()
         {
+            // Make sure archiving is configured first
+            if (!_logArchiverInitialized)
+            {
+                // Log out that archiving is not configured and must be setup
+                SharpLogBroker.MasterLogger.WriteLog("ERROR! THE LOG ARCHIVER HAS NOT YET BEEN CONFIGURED! PLEASE SET IT UP BEFORE ARCHIVING!");
+                SharpLogBroker.MasterLogger.WriteException(new InvalidOperationException("Error! Please setup the SharpLogArchiver before using it"));
+                return false;
+            }
+
             // Build a correct filter for our archive values here and find all needed files
             string ExtensionValue = LogArchiveConfig.CompressionStyle == CompressionType.ZipCompression 
                 ? $"{SharpLogBroker.LogBrokerName}*.zip*".Trim()
