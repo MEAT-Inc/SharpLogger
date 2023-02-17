@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using NLog;
 using NLog.Config;
+using NLog.Layouts;
 using NLog.Targets;
 
 namespace SharpLogging
@@ -23,31 +24,27 @@ namespace SharpLogging
 
         #region Fields
 
-        // Private constants holding default configuration values for the basic output path locations
-        internal const string _defaultOutputPath = @"C:\\Program Files (x86)\\MEAT Inc\\SharpLogging\\";
-
-        // Private static collection of all current logger instances
-        private static DateTime _brokerCreated;                         // The time the broker instance was built
-        private static bool _logBrokerInitialized;                      // Sets if the log broker has been built or not at this point
-        private static BrokerConfiguration _logBrokerConfig;            // Passed in configuration values used to setup this log broker instance
-        private static List<SharpLogger> _loggerPool = new();           // The collection of all built loggers in this instance
-
         // Private backing fields for logger states and values
-        private static bool _loggingEnabled = true;                     // Sets if logging is currently enabled or disabled for this log broker instance
-        private static LogLevel _minLevel = LogLevel.Off;               // Minimum logging level for this logging session (Defaults to trace for debug)
-        private static LogLevel _maxLevel = LogLevel.Off;               // Maximum logging level for this logging session (Defaults to fatal for all sessions)
+        private static bool _logBrokerInitialized;                       // Sets if the log broker has been built or not at this point
+        private static bool _loggingEnabled = true;                      // Sets if logging is currently enabled or disabled for this log broker instance
+        private static LogLevel _minLevel = LogLevel.Off;                // Minimum logging level for this logging session (Defaults to trace for debug)
+        private static LogLevel _maxLevel = LogLevel.Off;                // Maximum logging level for this logging session (Defaults to fatal for all sessions)
+                                                                         
+        // Private static collection of all current logger instances     
+        private static DateTime _brokerCreated;                          // The time the broker instance was built
+        private static SharpLogger _masterLogger;                        // The main SharpLogger that is used to write our output content to a log file or targets
+        private static BrokerConfiguration _logBrokerConfig;             // Passed in configuration values used to setup this log broker instance
+        private static List<SharpLogger> _loggerPool = new();            // The collection of all built loggers in this instance
 
         // Private backing fields for logging path information and logger instance
-        private static string _logFileName;                             // Path to the output log file being used for all logging instances. Shared across all classes
-        private static string _logFilePath;                             // The Path to the output log file minus the log file name. Can not be set using the property
-        private static string _logBrokerName;                           // Name of the logger instance for this session setup. (Calling application name)
+        private static string _logFileName;                              // Path to the output log file being used for all logging instances. Shared across all classes
+        private static string _logFilePath;                              // The Path to the output log file minus the log file name. Can not be set using the property
+        private static string _logFileFolder;                            // The path to the folder holding all output logs for this session (Base of the file path)
+        private static string _logBrokerName;                            // Name of the logger instance for this session setup. (Calling application name)
         
-        // Default format objects for writing output to our targets 
-        private static SharpFileTargetFormat _defaultFileFormat;        // Default format for a file target. Contains the output format string and configuration values
-        private static SharpConsoleTargetFormat _defaultConsoleFormat;  // Default format for a console target. Contains the output format string and configuration values
-
-        // NLogger and SharpLogger objects used for logging output
-        private static SharpLogger _masterLogger;                       // The main SharpLogger that is used to write our output content to a log file or targets
+        // Default format objects for writing output to our targets     
+        private static SharpFileTargetFormat _defaultFileFormat;         // Default format for a file target. Contains the output format string and configuration values
+        private static SharpConsoleTargetFormat _defaultConsoleFormat;   // Default format for a console target. Contains the output format string and configuration values
 
         #endregion //Fields
 
@@ -103,6 +100,11 @@ namespace SharpLogging
             get => _logFilePath;
             private set => _logFilePath = value;
         }
+        public static string LogFileFolder
+        {
+            get => _logFileFolder;
+            private set => _logFileFolder = value;
+        }
         public static string LogBrokerName
         {
             get => _logBrokerName;
@@ -151,14 +153,36 @@ namespace SharpLogging
         // Public facing constant logger configuration objects for formatting output strings
         public static SharpFileTargetFormat DefaultFileFormat
         {
-            get => _defaultFileFormat ??= new SharpFileTargetFormat(); 
-            set => _defaultFileFormat = value;
+            get => _defaultFileFormat ??= new SharpFileTargetFormat();
+            set
+            {
+                // Configure the layout for our new master logger instance if needed
+                _defaultFileFormat = value;
+                if (MasterFileTarget == null || MasterLogger == null) return;
+
+                // Reconfigure the target instances for our logging output now 
+                MasterFileTarget.Layout = new SimpleLayout(_defaultFileFormat.LoggerFormatString);
+                LogManager.ReconfigExistingLoggers();
+            }
         }
         public static SharpConsoleTargetFormat DefaultConsoleFormat
         {
             get => _defaultConsoleFormat ??= new SharpConsoleTargetFormat();
-            set => _defaultConsoleFormat = value;
+            set
+            {
+                // Configure the layout for our new master logger instance if needed
+                _defaultConsoleFormat = value;
+                if (MasterConsoleTarget == null || MasterLogger == null) return;
+
+                // Reconfigure the target instances for our logging output now 
+                MasterConsoleTarget.Layout = new SimpleLayout(_defaultConsoleFormat.LoggerFormatString);
+                LogManager.ReconfigExistingLoggers();
+            }
         }
+
+        // Internal main logging targets for the master logging output target locations
+        internal static FileTarget MasterFileTarget { get; private set; }
+        internal static ColoredConsoleTarget MasterConsoleTarget { get; private set; }
 
         #endregion //Properties
 
@@ -177,8 +201,8 @@ namespace SharpLogging
             // Public facing field for the logging location and session name (Name defaults to the calling EXE name)
             [DefaultValue("SharpLogging")] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public string LogBrokerName = "SharpLogging";
-            [DefaultValue(_defaultOutputPath)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public string LogFilePath = _defaultOutputPath;
+            [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public string LogFilePath = AppDomain.CurrentDomain.BaseDirectory;
             [DefaultValue("")] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public string LogFileName = $"SharpLogging_{DateTime.Now.ToString("MMddyyy-HHmmss")}.log";
 
@@ -255,7 +279,6 @@ namespace SharpLogging
         /// When a name of a file is provided to output file path, the name of the log file is used
         /// </summary>
         /// <param name="BrokerConfig">The broker configuration to use for building a new logging session</param>
-        /// <param name="ArchiveConfig">An optional archive configuration object we use to setup default archive configurations</param>
         public static bool InitializeLogging(BrokerConfiguration BrokerConfig)
         {
             // Start by storing new configuration values for the log broker and archiver configurations
@@ -273,65 +296,53 @@ namespace SharpLogging
             _maxLevel = (int)BrokerConfig.MaxLogLevel > 6 ? LogLevel.Fatal : BrokerConfig.MaxLogLevel.ToNLevel();
 
             // Now find our output log file path/name value and create the logging output file
+            string LoggerTime = _brokerCreated.ToString("MMddyyy-HHmmss");
             if (string.IsNullOrWhiteSpace(BrokerConfig.LogFilePath))
             {
                 // Store our new log file path value and exit out once stored since we now have a logging path
-                string LoggerTime = DateTime.Now.ToString("MMddyyy-HHmmss");
                 LogFileName = string.IsNullOrWhiteSpace(BrokerConfig.LogFileName)
                     ?  $"{LogBrokerName}_Logging_{LoggerTime}.log"
-                    : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName)}_{LoggerTime}{Path.GetExtension(BrokerConfig.LogFileName)}";
+                    : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName).Replace($"$LOGGER_TIME", LoggerTime)}{Path.GetExtension(BrokerConfig.LogFileName)}";
                 
-                // Build the full path based on the default output location and the log file name pulled in
-                LogFilePath = Path.Combine(_defaultOutputPath, LogFileName).Replace("\\\\", "\\").Trim();
-                if (!Directory.Exists(_defaultOutputPath)) Directory.CreateDirectory(_defaultOutputPath);
+                // Build the full path based on the path to our calling executable
+                LogFilePath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LogFileName));
             }
             else
             {
                 // Try and find the name of the file if one is given
-                BrokerConfig.LogFilePath = BrokerConfig.LogFilePath.Trim();
-                bool EndsWithDirChars =
+                BrokerConfig.LogFilePath = Path.GetFullPath(BrokerConfig.LogFilePath);
+                bool PathEndsWithDirChars =
                     BrokerConfig.LogFilePath.EndsWith("" + Path.DirectorySeparatorChar) ||
                     BrokerConfig.LogFilePath.EndsWith("" + Path.AltDirectorySeparatorChar);
 
                 // Now using the cleaned up path, find out if we've got a folder or a file being passed in
-                if (File.Exists(BrokerConfig.LogFilePath))
+                if (File.Exists(BrokerConfig.LogFilePath) || Path.HasExtension(BrokerConfig.LogFilePath))
                 {
                     // If we found an actual file for the input path, we know that's the final result
                     LogFileName = Path.GetFileName(BrokerConfig.LogFilePath);
-                    LogFilePath = BrokerConfig.LogFilePath.Trim();
+                    LogFilePath = Path.GetFullPath(BrokerConfig.LogFilePath.Trim());
                 }
-                else if ((Directory.Exists(BrokerConfig.LogFilePath) || EndsWithDirChars) && !Path.HasExtension(BrokerConfig.LogFilePath))
+                else if (Directory.Exists(BrokerConfig.LogFilePath) || PathEndsWithDirChars || !Path.HasExtension(BrokerConfig.LogFilePath))
                 {
                     // Setup a new log file name based on the instance name and the path given
-                    string LoggerTime = DateTime.Now.ToString("MMddyyy-HHmmss");
                     LogFileName = string.IsNullOrWhiteSpace(BrokerConfig.LogFileName)
                         ? $"{LogBrokerName}_Logging_{LoggerTime}.log"
-                        : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName)}_{LoggerTime}{Path.GetExtension(BrokerConfig.LogFileName)}";
-
+                        : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName).Replace($"$LOGGER_TIME", LoggerTime)}{Path.GetExtension(BrokerConfig.LogFileName)}";
+                    
                     // Build the full path based on the default output location and the log file name pulled in
-                    LogFilePath = Path.Combine(BrokerConfig.LogFilePath, LogFileName);
-                }
-                else if (Path.HasExtension(BrokerConfig.LogFilePath) && !EndsWithDirChars)
-                {
-                    // If the path provided is an actual file name that isn't real, build a path for it
-                    LogFileName = Path.GetFileName(BrokerConfig.LogFilePath);
-                    LogFilePath = BrokerConfig.LogFilePath.Trim();
+                    LogFilePath = Path.GetFullPath(Path.Combine(BrokerConfig.LogFilePath, LogFileName));
                 }
                 else
                 {
-                    // Throw a new failure here if we got to this point somehow
+                    // Throw a new failure here if we got to this point somehow. This means we didn't have a legal path value for the configuration
                     string ArgNameAndValue = $"{nameof(BrokerConfig.LogFilePath)} -- {BrokerConfig.LogFilePath}";
                     throw new ArgumentException($"Error! Broker configuration could not be used to setup logging! ({ArgNameAndValue})");
                 }
             }
-
-            // Clean up double slash values in our file and path names.
-            LogFileName = LogFileName.Replace("\\\\", "\\").Trim();
-            LogFilePath = LogFilePath.Replace("\\\\", "\\").Trim();
-
+            
             // Using the newly build path and file name values, setup an output folder if it needs to be built
-            string OutputFolder = LogFilePath.Replace(LogFileName, string.Empty).Trim();
-            if (!Directory.Exists(OutputFolder)) Directory.CreateDirectory(OutputFolder);
+            LogFileFolder = Path.GetFullPath(LogFilePath.Replace(LogFileName, string.Empty));
+            if (!Directory.Exists(LogFileFolder)) Directory.CreateDirectory(LogFileFolder);
 
             // Update our configuration to reflect the newly determined values for files
             _logBrokerInitialized = true;
@@ -348,6 +359,32 @@ namespace SharpLogging
                 for (int LoggerIndex = 0; LoggerIndex < _loggerPool.Count - 1; LoggerIndex++)
                     _loggerPool[LoggerIndex].Dispose();
             }
+
+            // Reconfigure our master target objects for the newly set broker configuration
+            MasterFileTarget = new FileTarget($"Master_{LogBrokerName}_FileTarget")
+            {
+                // Define basic configuration and store the desired layout on it
+                KeepFileOpen = false,
+                FileName = LogFilePath,
+                ConcurrentWrites = true,
+                Layout = new SimpleLayout(DefaultConsoleFormat.LoggerFormatString),
+            };
+
+            // Store new values for our master console target and setup the configuration for it
+            MasterConsoleTarget = new ColoredConsoleTarget($"Master_{LogBrokerName}_ColoredConsoleTarget")
+            {
+                // Setup our layout for content formatting and set our new highlighting rules
+                Layout = new SimpleLayout(DefaultConsoleFormat.LoggerFormatString),
+                RowHighlightingRules =
+                {
+                    new ConsoleRowHighlightingRule("level == LogLevel.Trace", ConsoleOutputColor.DarkGray, ConsoleOutputColor.Black),
+                    new ConsoleRowHighlightingRule("level == LogLevel.Debug", ConsoleOutputColor.Gray, ConsoleOutputColor.Black),
+                    new ConsoleRowHighlightingRule("level == LogLevel.Info", ConsoleOutputColor.Green, ConsoleOutputColor.Black),
+                    new ConsoleRowHighlightingRule("level == LogLevel.Warn", ConsoleOutputColor.Red, ConsoleOutputColor.Yellow),
+                    new ConsoleRowHighlightingRule("level == LogLevel.Error", ConsoleOutputColor.Red, ConsoleOutputColor.Gray),
+                    new ConsoleRowHighlightingRule("level == LogLevel.Fatal", ConsoleOutputColor.Red, ConsoleOutputColor.White)
+                }
+            };
 
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             LogManager.Configuration = new LoggingConfiguration();
@@ -420,6 +457,10 @@ namespace SharpLogging
         /// <returns>True if the logger is registered. False if it's replaced</returns>
         internal static bool RegisterLogger(SharpLogger LoggerItem)
         {
+            // Make sure logging is configured first
+            if (!_logBrokerInitialized)
+                throw new InvalidOperationException("Error! Please setup the SharpLogBroker before using it");
+
             // Lock the logger pool so we don't have thread issues
             lock (_loggerPool)
             {
@@ -453,6 +494,10 @@ namespace SharpLogging
         /// <returns>True if the logger is removed. False if it is not</returns>
         internal static bool DestroyLogger(SharpLogger LoggerItem)
         {
+            // Make sure logging is configured first
+            if (!_logBrokerInitialized)
+                throw new InvalidOperationException("Error! Please setup the SharpLogBroker before using it");
+
             // Remove the logger instance from the pool and then remove all rules and targets
             lock (_loggerPool)
             {

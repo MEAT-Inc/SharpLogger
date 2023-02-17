@@ -77,11 +77,15 @@ namespace SharpLogging
             var LoggerConfiguration = LogManager.Configuration;
             foreach (var UpdatedRule in UpdatedRules)
             {
-                // If adding, add new targets in. If removing, delete them now 
+                // If adding new rules, make sure the rule does not exist yet
                 if (EventArgs.Action == NotifyCollectionChangedAction.Add)
-                    LoggerConfiguration.AddRule(UpdatedRule);
+                    if (LoggerConfiguration.FindRuleByName(UpdatedRule.RuleName) == null)
+                        LoggerConfiguration.AddRule(UpdatedRule);
+
+                // If removing rules, only do so when the rule can actually be found
                 if (EventArgs.Action == NotifyCollectionChangedAction.Remove)
-                    LoggerConfiguration.RemoveRuleByName(UpdatedRule.RuleName);
+                    if (LoggerConfiguration.FindRuleByName(UpdatedRule.RuleName) != null)
+                        LoggerConfiguration.RemoveRuleByName(UpdatedRule.RuleName);
             }
 
             // Store the new collection of logging rules on the log broker and exit out
@@ -108,11 +112,15 @@ namespace SharpLogging
             var LoggerConfiguration = LogManager.Configuration;
             foreach (var UpdatedTarget in UpdatedTargets)
             {
-                // If adding, add new targets in. If removing, delete them now 
+                // If adding new targets, make sure the target does not exist yet
                 if (EventArgs.Action == NotifyCollectionChangedAction.Add)
-                    LoggerConfiguration.AddTarget(UpdatedTarget);
+                    if (LoggerConfiguration.FindTargetByName(UpdatedTarget.Name) == null)
+                        LoggerConfiguration.AddTarget(UpdatedTarget);
+
+                // If removing targets, only do so when the target can actually be found
                 if (EventArgs.Action == NotifyCollectionChangedAction.Remove)
-                    LoggerConfiguration.RemoveTarget(UpdatedTarget.Name);
+                    if (LoggerConfiguration.FindTargetByName(UpdatedTarget.Name) != null)
+                        LoggerConfiguration.RemoveTarget(UpdatedTarget.Name);
             }
 
             // Store the new collection of logging rules on the log broker and exit out
@@ -215,13 +223,53 @@ namespace SharpLogging
         // Public facing properties holding our configurations for format output strings
         public SharpFileTargetFormat FileTargetFormat
         {
-            get => this._fileLoggerFormat ??= SharpLogBroker.DefaultFileFormat;
-            set => this.SetField(ref this._fileLoggerFormat, value);
+            get => this._fileLoggerFormat ?? SharpLogBroker.DefaultFileFormat;
+            set
+            {
+                // Store the new format value and apply it to all of our targets
+                this.SetField(ref this._fileLoggerFormat, value);
+                lock (_loggerTargets)
+                {
+                    // Reconfigure all the formats for the targets currently on this logger
+                    foreach (var LoggerTarget in this._loggerTargets)
+                    {
+                        // Check the the target is a file target or something else
+                        if (LoggerTarget is not FileTarget FileLayoutTarget) continue;
+
+                        // If it's a valid file target and not our master target instance, apply our new format
+                        if (!FileLayoutTarget.Name.StartsWith($"Master_{SharpLogBroker.LogBrokerName}"))
+                            FileLayoutTarget.Layout = new SimpleLayout(this._fileLoggerFormat.LoggerFormatString);
+                    }
+                }
+
+                // Once done, refresh our log configuration values
+                LogManager.ReconfigExistingLoggers();
+            }
         }
         public SharpConsoleTargetFormat ConsoleTargetFormat
         {
-            get => this._consoleLoggerFormat ??= SharpLogBroker.DefaultConsoleFormat;
-            set => this.SetField(ref this._consoleLoggerFormat, value);
+            get => this._consoleLoggerFormat ?? SharpLogBroker.DefaultConsoleFormat;
+            set
+            {
+                // Store the new format value and apply it to all of our targets
+                this.SetField(ref this._consoleLoggerFormat, value);
+                lock (_loggerTargets)
+                {
+                    // Reconfigure all the formats for the targets currently on this logger
+                    foreach (var LoggerTarget in this._loggerTargets)
+                    {
+                        // Check the the target is a file target or something else
+                        if (LoggerTarget is not ColoredConsoleTarget ConsoleLayoutTarget) continue;
+
+                        // If it's a valid file target and not our master target instance, apply our new format
+                        if (!ConsoleLayoutTarget.Name.StartsWith($"Master_{SharpLogBroker.LogBrokerName}"))
+                            ConsoleLayoutTarget.Layout = new SimpleLayout(this._consoleLoggerFormat.LoggerFormatString);
+                    }
+                }
+
+                // Once done, refresh our log configuration values
+                LogManager.ReconfigExistingLoggers();
+            }
         }
 
         // Public facing collection of supported logging types
@@ -292,6 +340,10 @@ namespace SharpLogging
         /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
         public SharpLogger(LoggerActions LoggerType, string LoggerName = "", LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog)
         {
+            // If the log broker is not built, throw a new exception out
+            if (!SharpLogBroker.LogBrokerInitialized)
+                throw new InvalidOperationException("Error! Please configure the SharpLogBroker before spawning loggers!");
+
             // Set Min and Max logging levels and make sure they comply with the logging broker
             this.MinLevel = SharpLogBroker.MinLevel == LogType.NoLogging
                 ? LogType.NoLogging
@@ -324,17 +376,15 @@ namespace SharpLogging
             // Now store new targets for these loggers based on the types provided
             if (this.IsFileLogger || this.IsUniversalLogger)
             {
-                // Spawn a new file logger and attempt to register it
-                var FileLoggerBuilt = this._spawnFileTarget(); 
-                if (!this.RegisterTarget(FileLoggerBuilt))
-                    throw new InvalidOperationException($"Error! Failed to spawn a file target for logger {this.LoggerName}!");
+                // Get our master target from the SharpLogBroker and add a rule into this logger for it
+                if (!this.RegisterTarget(SharpLogBroker.MasterFileTarget))
+                    throw new InvalidOperationException($"Error! Failed to store default file target for logger {this.LoggerName}!");
             }
             if (this.IsConsoleLogger || this.IsUniversalLogger)
             {
-                // Spawn a new console logger and attempt to register it
-                var ConsoleLoggerBuilt = this._spawnConsoleTarget();
-                if (!this.RegisterTarget(ConsoleLoggerBuilt))
-                    throw new InvalidOperationException($"Error! Failed to spawn a console target for logger {this.LoggerName}!");
+                // Get our master target from the SharpLogBroker and add a rule into this logger for it
+                if (!this.RegisterTarget(SharpLogBroker.MasterConsoleTarget))
+                    throw new InvalidOperationException($"Error! Failed to store default console target for logger {this.LoggerName}!");
             }
 
             // Print out some logger information values and store this logger in our broker pool
@@ -537,6 +587,16 @@ namespace SharpLogging
                 if (this._loggerTargets.Any(ExistingTarget => ExistingTarget.Name == TargetToRegister.Name))
                     return false;
 
+                // If we don't have a target from the master logger, we can apply this loggers configuration to it now
+                if (!TargetToRegister.Name.StartsWith($"Master_{SharpLogBroker.LogBrokerName}"))
+                {
+                    // For each target on this logger that is NOT the master target type, apply a new format for it
+                    if (TargetToRegister is FileTarget FileLayoutTarget)
+                        FileLayoutTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
+                    if (TargetToRegister is ColoredConsoleTarget ConsoleLayoutTarget)
+                        ConsoleLayoutTarget.Layout = new SimpleLayout(this.ConsoleTargetFormat.LoggerFormatString);
+                }
+
                 // Now register a new rule for the file target and store it on the logging configuration for NLog
                 LoggingRule CustomTargetRule = new LoggingRule(
                     $"*{this.LoggerGuid.ToString("D").ToUpper()}*",
@@ -556,7 +616,7 @@ namespace SharpLogging
         /// </summary>
         /// <param name="TargetToDestroy">The target we wish to add into this logger</param>
         /// <returns>True if the target is built, false if it is not</returns>
-        public bool DestroyTarget(Target TargetToDestroy)
+        public bool RemoveTarget(Target TargetToDestroy)
         {
             // Lock our collection of targets before trying to query them
             lock (this._loggerRules) lock (this._loggerTargets)
@@ -580,63 +640,6 @@ namespace SharpLogging
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Spawns a new FileTarget for this logger instance
-        /// </summary>
-        /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
-        private FileTarget _spawnFileTarget()
-        {
-            // Build the new file target for our logger instance
-            var FileLoggerTarget = new FileTarget($"{this.LoggerName}_FileTarget");
-            FileLoggerTarget.KeepFileOpen = false;
-            FileLoggerTarget.ConcurrentWrites = true;
-            FileLoggerTarget.FileName = SharpLogBroker.LogFilePath;
-            FileLoggerTarget.ArchiveNumbering = ArchiveNumberingMode.DateAndSequence;
-            FileLoggerTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
-
-            // Return the newly built target instance without adding it to our configuration
-            return FileLoggerTarget;
-        }
-        /// <summary>
-        /// Spawns a new ColoredConsoleTarget for this logger instance
-        /// </summary>
-        /// <returns>The built logger target object which contains rules and formats for our outputs</returns>
-        private ColoredConsoleTarget _spawnConsoleTarget()
-        {
-            // Make Logger and set format.
-            var ConsoleLoggerTarget = new ColoredConsoleTarget($"{this.LoggerName}_ColoredConsoleTarget");
-            ConsoleLoggerTarget.Layout = new SimpleLayout(this.ConsoleTargetFormat.LoggerFormatString);
-
-            // Add Coloring Rules
-            ConsoleLoggerTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule(
-                "level == LogLevel.Trace",
-                ConsoleOutputColor.DarkGray,
-                ConsoleOutputColor.Black));
-            ConsoleLoggerTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule(
-                "level == LogLevel.Debug",
-                ConsoleOutputColor.Gray,
-                ConsoleOutputColor.Black));
-            ConsoleLoggerTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule(
-                "level == LogLevel.Info",
-                ConsoleOutputColor.Green,
-                ConsoleOutputColor.Black));
-            ConsoleLoggerTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule(
-                "level == LogLevel.Warn",
-                ConsoleOutputColor.Red,
-                ConsoleOutputColor.Yellow));
-            ConsoleLoggerTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule(
-                "level == LogLevel.Error",
-                ConsoleOutputColor.Red,
-                ConsoleOutputColor.Gray));
-            ConsoleLoggerTarget.RowHighlightingRules.Add(new ConsoleRowHighlightingRule(
-                "level == LogLevel.Fatal",
-                ConsoleOutputColor.Red,
-                ConsoleOutputColor.White));
-
-            // Return the newly built target instance without adding it to our configuration
-            return ConsoleLoggerTarget;
-        }
 
         /// <summary>
         /// Gets the name of the calling method.
