@@ -77,6 +77,10 @@ namespace SharpLogging
             var LoggerConfiguration = LogManager.Configuration;
             foreach (var UpdatedRule in UpdatedRules)
             {
+                // Make sure this target is not one of our master targets before trying to add or remove it
+                if (SharpLogBroker.MasterLogger != null && UpdatedRule.LoggerNamePattern.Contains(SharpLogBroker.MasterLogger.LoggerName))
+                    continue;
+
                 // If adding new rules, make sure the rule does not exist yet
                 if (EventArgs.Action == NotifyCollectionChangedAction.Add)
                     if (LoggerConfiguration.FindRuleByName(UpdatedRule.RuleName) == null)
@@ -112,6 +116,10 @@ namespace SharpLogging
             var LoggerConfiguration = LogManager.Configuration;
             foreach (var UpdatedTarget in UpdatedTargets)
             {
+                // Make sure this target is not one of our master targets before trying to add or remove it
+                if (SharpLogBroker.MasterLogger != null && UpdatedTarget.Name.StartsWith($"Master_{SharpLogBroker.LogBrokerName}")) 
+                    continue;
+
                 // If adding new targets, make sure the target does not exist yet
                 if (EventArgs.Action == NotifyCollectionChangedAction.Add)
                     if (LoggerConfiguration.FindTargetByName(UpdatedTarget.Name) == null)

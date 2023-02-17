@@ -17,7 +17,7 @@ The SharpLogger supports three main logging output types at this point, with sup
     ### **SharpLogBroker Setup**
     - Keep in mind than when configuring the LogBroker, you *must* configure it at the very start of your program (inside App.xaml.cs or Main), in order to ensure that all packages/loggers are ready to use when they're called. 
     - A sample `SharpLogBroker.BrokerConfiguration` JSON payload would be something similar to what is shown below.
-    - The`$LOGGER_TIME` keyword is used to insert the Date and Time logging started into the log file name where you specify. So for this file, we would end up having a file name of something like `MyCoolCSharpApp_Logging_02172023-082222.log`.
+    - The`$LOGGER_TIME` keyword is used to insert the Date and Time logging started into the log file name where you specify. So for this file, we would end up having a file name of something like `MyCoolCSharpApp_Logging_02172023-111747.log`.
     - If any of these values are left empty/null when the configuration is loaded in, the default/fallback values will be applied to the configuration object. Some of those defaults are listed below
         - `LogBrokerName` - Will default to the name of the EXE/Service that is calling this logging session with the word Logger appended to it. (Example: MyCoolCSharpAppLogging)
         - `LogFilePath` - Will default to the base location of the calling executable. (Example: `C:\Program Files (x86)\MyOrg\MyCoolSharpApp\MyCoolCSharpApp.exe` would store `C:\Program Files (x86)\MyOrg\MyCoolSharpApp`)
@@ -58,39 +58,42 @@ The SharpLogger supports three main logging output types at this point, with sup
         }
         ```
     - The code snippet above would log out something like the following to the log file specified. 
-    - In this case, that log file would be `C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-082222.log`, or something similar to that since we've got the `$LOGGER_TIME` keyword in our log file path.
+    - In this case, that log file would be `C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-111747.log`, or something similar to that since we've got the `$LOGGER_TIME` keyword in our log file path.
     - Once you've configured the LogBtoker, you're free to go and spawn any other logger instances you want, or setup a new LogArchiver configuration for automatic log file cleanup.
         ```log
-        [02-17-2023 08:24:32][INFO][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: LOGGER 'LogBrokerLogger_47A9CB0E-9FB8-487A-B8C3-5A1DCD270C50' HAS BEEN SPAWNED CORRECTLY!
-        [02-17-2023 08:24:32][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ TIME CREATED:   2/17/2023 8:24:32 AM
-        [02-17-2023 08:24:32][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER GUID:    47A9CB0E-9FB8-487A-B8C3-5A1DCD270C50
-        [02-17-2023 08:24:32][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ IS UNIVERSAL:   YES
-        [02-17-2023 08:24:32][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ RULE COUNT:     2 RULES
-        [02-17-2023 08:24:32][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ TARGET COUNT:   2 TARGETS
-        [02-17-2023 08:24:32][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER STRING:  LogBrokerLogger_47A9CB0E-9FB8-487A-B8C3-5A1DCD270C50 (UniversalLogger) - 2 Rules and 2 Targets
-        [02-17-2023 08:24:33][WARN][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!
-        [02-17-2023 08:24:34][INFO][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!
-        [02-17-2023 08:24:35][TRACE][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: 
+        [11:17:47][INFO][LogBrokerLogger][ctor] ::: LOGGER 'LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670' HAS BEEN SPAWNED CORRECTLY!
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ TIME CREATED:   2/17/2023 11:17:47 AM
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ LOGGER GUID:    198BF50C-00B9-486A-A465-0559C1031670
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ IS UNIVERSAL:   YES
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ RULE COUNT:     2 RULES
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ TARGET COUNT:   2 TARGETS
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ LOGGER STRING:  LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670 (UniversalLogger) - 2 Rules and 2 Targets
+        [11:17:47][WARN][LogBrokerLogger][InitializeLogging] ::: LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!
+        [11:17:47][INFO][LogBrokerLogger][InitializeLogging] ::: SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!
+        [11:17:47][TRACE][LogBrokerLogger][InitializeLogging] ::: 
 
-        Log Broker Information - 'MyCoolCSharpApp' - Version 2.4.8.253
+        Log Broker Information - 'MyCoolCSharpApp' - Version 2.5.2.260
             \__ Broker Status:  Log Broker Ready!
-            \__ Creation Time:  2/17/2023 8:22 AM
+            \__ Creation Time:  2/17/2023 11:17 AM
             \__ Logging State:  Logging Currently ON
             \__ Min Log Level:  TraceLog (NLevel: Trace)
             \__ Max Log Level:  FatalLog (NLevel: Fatal)
-            \__ Log File Name:  MyCoolCSharpApp_Logging_02172023-082222.log
-            \__ Log File Path:  C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-082222.log
+            \__ Log File Name:  MyCoolCSharpApp_Logging_02172023-111747.log
+            \__ Log File Path:  C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-111747.log
             ----------------------------------------------------------------------------------------------------
-            \__ Loggers Built:  1 Logger Constructed
-            \__ Master Logger:  LogBrokerLogger_47A9CB0E-9FB8-487A-B8C3-5A1DCD270C50
+            \__ Loggers Built:  4 Loggers Constructed
+            \__ Master Logger:  LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670
+            ----------------------------------------------------------------------------------------------------
+            \__ Targets Built:  8 Logging Targets Constructed
+            \__ Rules Defined:  8 Logging Rules Defined
             ----------------------------------------------------------------------------------------------------
             \__ Broker Config (JSON):
                 {
-                    "LogBrokerName": "MyCoolCSharpApp",
-                    "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-082222.log",
-                    "LogFileName": "MyCoolCSharpApp_Logging_02172023-082222.log",
-                    "MinLogLevel": "TraceLog",
-                    "MaxLogLevel": "FatalLog"
+                "LogBrokerName": "MyCoolCSharpApp",
+                "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-111747.log",
+                "LogFileName": "MyCoolCSharpApp_Logging_02172023-111747.log",
+                "MinLogLevel": "TraceLog",
+                "MaxLogLevel": "FatalLog"
                 }
             ----------------------------------------------------------------------------------------------------
         ```
@@ -156,72 +159,75 @@ The SharpLogger supports three main logging output types at this point, with sup
                 throw new InvalidOperationException("Error! Failed to configure the SharpArchiver!");
         }
         ```   
-    - When executed, the code snipped above will log out something similar to the following. Since we used the same configuration for the log broker as we did for the example above, the log file will still be saved using the time format string, and stored in the folder `C:\Program Files (x86)\MyOrg\MyCoolCSharpApp` inside a file with a name similar to `MyCoolCSharpApp_Logging_02172023-090359.log`.
+    - When executed, the code snipped above will log out something similar to the following. Since we used the same configuration for the log broker as we did for the example above, the log file will still be saved using the time format string, and stored in the folder `C:\Program Files (x86)\MyOrg\MyCoolCSharpApp` inside a file with a name similar to `MyCoolCSharpApp_Logging_02172023-111747.log`.
     - If you see that no archives are built when the archiver is first created, either you've got no log files to archive in the path you're requesting to search through, or something in your archiver configuration is not setup correctly. 
     - The output from this method demonstrates how the LogArchiver determines the best possible paths and filters to use based on the LogBroker configuration determined before configuring the LogArchiver.
     - Once you've configured the archiver, you're free to go and spawn any other logger instances you want.
         ```log
-        [02-17-2023 09:04:00][INFO][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: LOGGER 'LogBrokerLogger_706D03C1-3793-4A0B-A780-A81C66BB6C69' HAS BEEN SPAWNED CORRECTLY!
-        [02-17-2023 09:04:00][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ TIME CREATED:   2/17/2023 9:03:59 AM
-        [02-17-2023 09:04:00][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER GUID:    706D03C1-3793-4A0B-A780-A81C66BB6C69
-        [02-17-2023 09:04:00][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ IS UNIVERSAL:   YES
-        [02-17-2023 09:04:00][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ RULE COUNT:     2 RULES
-        [02-17-2023 09:04:00][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ TARGET COUNT:   2 TARGETS
-        [02-17-2023 09:04:00][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER STRING:  LogBrokerLogger_706D03C1-3793-4A0B-A780-A81C66BB6C69 (UniversalLogger) - 2 Rules and 2 Targets
-        [02-17-2023 09:04:00][WARN][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!
-        [02-17-2023 09:04:00][INFO][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!
-        [02-17-2023 09:04:00][TRACE][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: 
+        [11:17:47][INFO][LogBrokerLogger][ctor] ::: LOGGER 'LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670' HAS BEEN SPAWNED CORRECTLY!
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ TIME CREATED:   2/17/2023 11:17:47 AM
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ LOGGER GUID:    198BF50C-00B9-486A-A465-0559C1031670
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ IS UNIVERSAL:   YES
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ RULE COUNT:     2 RULES
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ TARGET COUNT:   2 TARGETS
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ LOGGER STRING:  LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670 (UniversalLogger) - 2 Rules and 2 Targets
+        [11:17:47][WARN][LogBrokerLogger][InitializeLogging] ::: LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!
+        [11:17:47][INFO][LogBrokerLogger][InitializeLogging] ::: SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!
+        [11:17:47][TRACE][LogBrokerLogger][InitializeLogging] ::: 
 
-        Log Broker Information - 'MyCoolCSharpApp' - Version 2.4.8.254
+        Log Broker Information - 'MyCoolCSharpApp' - Version 2.5.2.260
             \__ Broker Status:  Log Broker Ready!
-            \__ Creation Time:  2/17/2023 9:03 AM
+            \__ Creation Time:  2/17/2023 11:17 AM
             \__ Logging State:  Logging Currently ON
             \__ Min Log Level:  TraceLog (NLevel: Trace)
             \__ Max Log Level:  FatalLog (NLevel: Fatal)
-            \__ Log File Name:  MyCoolCSharpApp_Logging_02172023-090359.log
-            \__ Log File Path:  C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-090359.log
+            \__ Log File Name:  MyCoolCSharpApp_Logging_02172023-111747.log
+            \__ Log File Path:  C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-111747.log
             ----------------------------------------------------------------------------------------------------
-            \__ Loggers Built:  1 Logger Constructed
-            \__ Master Logger:  LogBrokerLogger_706D03C1-3793-4A0B-A780-A81C66BB6C69
+            \__ Loggers Built:  4 Loggers Constructed
+            \__ Master Logger:  LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670
+            ----------------------------------------------------------------------------------------------------
+            \__ Targets Built:  8 Logging Targets Constructed
+            \__ Rules Defined:  8 Logging Rules Defined
             ----------------------------------------------------------------------------------------------------
             \__ Broker Config (JSON):
                 {
                     "LogBrokerName": "MyCoolCSharpApp",
-                    "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-090359.log",
-                    "LogFileName": "MyCoolCSharpApp_Logging_02172023-090359.log",
+                    "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-111747.log",
+                    "LogFileName": "MyCoolCSharpApp_Logging_02172023-111747.log",
                     "MinLogLevel": "TraceLog",
                     "MaxLogLevel": "FatalLog"
                 }
             ----------------------------------------------------------------------------------------------------
 
-        [02-17-2023 09:04:00][INFO][LogArchiverLogger][SharpLogging.SharpLogger..ctor] ::: LOGGER 'LogArchiverLogger_01435B9A-B159-48B4-8101-DA8CF402BB81' HAS BEEN SPAWNED CORRECTLY!
-        [02-17-2023 09:04:00][TRACE][LogArchiverLogger][SharpLogging.SharpLogger..ctor] ::: \__ TIME CREATED:   2/17/2023 9:04:00 AM
-        [02-17-2023 09:04:00][TRACE][LogArchiverLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER GUID:    01435B9A-B159-48B4-8101-DA8CF402BB81
-        [02-17-2023 09:04:00][TRACE][LogArchiverLogger][SharpLogging.SharpLogger..ctor] ::: \__ IS UNIVERSAL:   YES
-        [02-17-2023 09:04:00][TRACE][LogArchiverLogger][SharpLogging.SharpLogger..ctor] ::: \__ RULE COUNT:     2 RULES
-        [02-17-2023 09:04:00][TRACE][LogArchiverLogger][SharpLogging.SharpLogger..ctor] ::: \__ TARGET COUNT:   2 TARGETS
-        [02-17-2023 09:04:00][TRACE][LogArchiverLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER STRING:  LogArchiverLogger_01435B9A-B159-48B4-8101-DA8CF402BB81 (UniversalLogger) - 2 Rules and 2 Targets
-        [02-17-2023 09:04:00][INFO][LogArchiverLogger][SharpLogging.SharpLogArchiver.InitializeArchiving] ::: ARCHIVE HELPER BUILT WITHOUT ISSUES! READY TO PULL IN ARCHIVES USING PROVIDED CONFIGURATION!
-        [02-17-2023 09:04:00][TRACE][LogArchiverLogger][SharpLogging.SharpLogArchiver.InitializeArchiving] ::: 
+        [11:17:47][INFO][LogArchiverLogger][ctor] ::: LOGGER 'LogArchiverLogger_5B4294FA-97DB-47B5-8535-FE132D861851' HAS BEEN SPAWNED CORRECTLY!
+        [11:17:47][TRACE][LogArchiverLogger][ctor] ::: \__ TIME CREATED:   2/17/2023 11:17:47 AM
+        [11:17:47][TRACE][LogArchiverLogger][ctor] ::: \__ LOGGER GUID:    5B4294FA-97DB-47B5-8535-FE132D861851
+        [11:17:47][TRACE][LogArchiverLogger][ctor] ::: \__ IS UNIVERSAL:   YES
+        [11:17:47][TRACE][LogArchiverLogger][ctor] ::: \__ RULE COUNT:     2 RULES
+        [11:17:47][TRACE][LogArchiverLogger][ctor] ::: \__ TARGET COUNT:   2 TARGETS
+        [11:17:47][TRACE][LogArchiverLogger][ctor] ::: \__ LOGGER STRING:  LogArchiverLogger_5B4294FA-97DB-47B5-8535-FE132D861851 (UniversalLogger) - 2 Rules and 2 Targets
+        [11:17:47][INFO][LogArchiverLogger][InitializeArchiving] ::: ARCHIVE HELPER BUILT WITHOUT ISSUES! READY TO PULL IN ARCHIVES USING PROVIDED CONFIGURATION!
+        [11:17:47][TRACE][LogArchiverLogger][InitializeArchiving] ::: 
 
-        Log Archiver Information - 'MyCoolCSharpApp (Archives)' - Version 2.4.8.254
+        Log Archiver Information - 'MyCoolCSharpApp (Archives)' - Version 2.5.2.260
             \__ Archiver State:  Archiver Ready!
-            \__ Creation Time:   2/17/2023 9:04 AM
+            \__ Creation Time:   2/17/2023 11:17 AM
             \__ Archive Size:    15 files
             \__ Trigger Count:   20 files
             \__ Max Archives:    50 archives
-            \__ Search Filter:   MyCoolCSharpApp*.log
-            \__ Search Path:     C:\Program Files (x86)\MyOrg\MyCoolCSharpApp
+            \__ Search Filter:   MyCoolCSharpApp*.*
+            \__ Search Path:     C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\
             \__ Archive Path:    C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\LogArchives
             ----------------------------------------------------------------------------------------------------
-            \__ Archive Logger:  LogArchiverLogger_01435B9A-B159-48B4-8101-DA8CF402BB81
+            \__ Archive Logger:  LogArchiverLogger_5B4294FA-97DB-47B5-8535-FE132D861851
             \__ Logger Targets:  UniversalLogger
             ----------------------------------------------------------------------------------------------------
             \__ Archiver Config (JSON):
                 {
-                    "SearchPath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp",
+                    "SearchPath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\",
                     "ArchivePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\LogArchives",
-                    "ArchiveFileFilter": "MyCoolCSharpApp*.log",
+                    "ArchiveFileFilter": "MyCoolCSharpApp*.*",
                     "ArchiveFileSetSize": 15,
                     "ArchiveOnFileCount": 20,
                     "ArchiveCleanupFileCount": 50,
@@ -230,8 +236,8 @@ The SharpLogger supports three main logging output types at this point, with sup
                 }
             ----------------------------------------------------------------------------------------------------
 
-        [02-17-2023 09:04:00][WARN][LogArchiverLogger][SharpLogging.SharpLogArchiver.InitializeArchiving] ::: ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: C:\Program Files (x86)\MEAT Inc\SharpLogging\...
-        [02-17-2023 09:04:00][WARN][LogArchiverLogger][SharpLogging.SharpLogArchiver.InitializeArchiving] ::: NO LOG FILE ARCHIVE SETS COULD BE BUILT! THIS IS LIKELY BECAUSE THERE AREN'T ENOUGH FILES TO ARCHIVE!
+        [11:17:47][WARN][LogArchiverLogger][InitializeArchiving] ::: ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\...
+        [11:17:47][WARN][LogArchiverLogger][InitializeArchiving] ::: NO LOG FILE ARCHIVE SETS COULD BE BUILT! THIS IS LIKELY BECAUSE THERE AREN'T ENOUGH FILES TO ARCHIVE!
         ```
 
     ### **Spawning SharpLoggers**
@@ -264,50 +270,55 @@ The SharpLogger supports three main logging output types at this point, with sup
             TestFileLogger.WriteLog($"SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME {TestFileLogger.LoggerName}!", LogType.InfoLog);
         }
         ```
-    - When executed, the code snipped above will log out something similar to the following. Since we used the same configuration for the log broker as we did for the example above, the log file will still be saved using the time format string, and stored in the folder `C:\Program Files (x86)\MyOrg\MyCoolCSharpApp` inside a file with a name similar to `MyCoolCSharpApp_Logging_02172023-090359.log`.
+    - When executed, the code snipped above will log out something similar to the following. Since we used the same configuration for the log broker as we did for the example above, the log file will still be saved using the time format string, and stored in the folder `C:\Program Files (x86)\MyOrg\MyCoolCSharpApp` inside a file with a name similar to `MyCoolCSharpApp_Logging_02172023-111747.log`.
     - This output is essentially identical to the output for when you simply configure the LogBroker instance, but it will also include our new logging information and output for the logger we built named `TestFileLogger`. Sample output from this method is shown below.
         ```log
-        [02-17-2023 09:39:17][INFO][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: LOGGER 'LogBrokerLogger_53EB7170-0C97-4A0D-BA4E-82430627E605' HAS BEEN SPAWNED CORRECTLY!
-        [02-17-2023 09:39:17][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ TIME CREATED:   2/17/2023 9:39:16 AM
-        [02-17-2023 09:39:17][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER GUID:    53EB7170-0C97-4A0D-BA4E-82430627E605
-        [02-17-2023 09:39:17][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ IS UNIVERSAL:   YES
-        [02-17-2023 09:39:17][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ RULE COUNT:     2 RULES
-        [02-17-2023 09:39:17][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ TARGET COUNT:   2 TARGETS
-        [02-17-2023 09:39:17][TRACE][LogBrokerLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER STRING:  LogBrokerLogger_53EB7170-0C97-4A0D-BA4E-82430627E605 (UniversalLogger) - 2 Rules and 2 Targets
-        [02-17-2023 09:39:17][WARN][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!
-        [02-17-2023 09:39:17][INFO][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!
-        [02-17-2023 09:39:17][TRACE][LogBrokerLogger][SharpLogging.SharpLogBroker.InitializeLogging] ::: 
+        [11:17:47][INFO][LogBrokerLogger][ctor] ::: LOGGER 'LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670' HAS BEEN SPAWNED CORRECTLY!
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ TIME CREATED:   2/17/2023 11:17:47 AM
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ LOGGER GUID:    198BF50C-00B9-486A-A465-0559C1031670
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ IS UNIVERSAL:   YES
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ RULE COUNT:     2 RULES
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ TARGET COUNT:   2 TARGETS
+        [11:17:47][TRACE][LogBrokerLogger][ctor] ::: \__ LOGGER STRING:  LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670 (UniversalLogger) - 2 Rules and 2 Targets
+        [11:17:47][WARN][LogBrokerLogger][InitializeLogging] ::: LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!
+        [11:17:47][INFO][LogBrokerLogger][InitializeLogging] ::: SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!
+        [11:17:47][TRACE][LogBrokerLogger][InitializeLogging] ::: 
 
-        Log Broker Information - 'MyCoolCSharpApp' - Version 2.4.8.255
+        Log Broker Information - 'MyCoolCSharpApp' - Version 2.5.2.260
             \__ Broker Status:  Log Broker Ready!
-            \__ Creation Time:  2/17/2023 9:39 AM
+            \__ Creation Time:  2/17/2023 11:17 AM
             \__ Logging State:  Logging Currently ON
             \__ Min Log Level:  TraceLog (NLevel: Trace)
             \__ Max Log Level:  FatalLog (NLevel: Fatal)
-            \__ Log File Name:  MyCoolCSharpApp_Logging_02172023-093916.log
-            \__ Log File Path:  C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-093916.log
+            \__ Log File Name:  MyCoolCSharpApp_Logging_02172023-111747.log
+            \__ Log File Path:  C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\MyCoolCSharpApp_Logging_02172023-111747.log
             ----------------------------------------------------------------------------------------------------
-            \__ Loggers Built:  1 Logger Constructed
-            \__ Master Logger:  LogBrokerLogger_53EB7170-0C97-4A0D-BA4E-82430627E605
+            \__ Loggers Built:  4 Loggers Constructed
+            \__ Master Logger:  LogBrokerLogger_198BF50C-00B9-486A-A465-0559C1031670
+            ----------------------------------------------------------------------------------------------------
+            \__ Targets Built:  8 Logging Targets Constructed
+            \__ Rules Defined:  8 Logging Rules Defined
             ----------------------------------------------------------------------------------------------------
             \__ Broker Config (JSON):
                 {
-                "LogBrokerName": "MyCoolCSharpApp",
-                "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-093916.log",
-                "LogFileName": "MyCoolCSharpApp_Logging_02172023-093916.log",
-                "MinLogLevel": "TraceLog",
-                "MaxLogLevel": "FatalLog"
+                   "LogBrokerName": "MyCoolCSharpApp",
+                    "LogFilePath": "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp\\MyCoolCSharpApp_Logging_02172023-111747.log",
+                    "LogFileName": "MyCoolCSharpApp_Logging_02172023-111747.log",
+                    "MinLogLevel": "TraceLog",
+                    "MaxLogLevel": "FatalLog"
                 }
             ----------------------------------------------------------------------------------------------------
-
-        [02-17-2023 09:39:17][INFO][TestFileLogger][SharpLogging.SharpLogger..ctor] ::: LOGGER 'TestFileLogger_6F2A3D46-7747-4832-AC25-4AB12E4BEAB8' HAS BEEN SPAWNED CORRECTLY!
-        [02-17-2023 09:39:17][TRACE][TestFileLogger][SharpLogging.SharpLogger..ctor] ::: \__ TIME CREATED:   2/17/2023 9:39:17 AM
-        [02-17-2023 09:39:17][TRACE][TestFileLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER GUID:    6F2A3D46-7747-4832-AC25-4AB12E4BEAB8
-        [02-17-2023 09:39:17][TRACE][TestFileLogger][SharpLogging.SharpLogger..ctor] ::: \__ IS UNIVERSAL:   YES
-        [02-17-2023 09:39:17][TRACE][TestFileLogger][SharpLogging.SharpLogger..ctor] ::: \__ RULE COUNT:     2 RULES
-        [02-17-2023 09:39:17][TRACE][TestFileLogger][SharpLogging.SharpLogger..ctor] ::: \__ TARGET COUNT:   2 TARGETS
-        [02-17-2023 09:39:17][TRACE][TestFileLogger][SharpLogging.SharpLogger..ctor] ::: \__ LOGGER STRING:  TestFileLogger_6F2A3D46-7747-4832-AC25-4AB12E4BEAB8 (FileLogger) - 2 Rules and 2 Targets
-        [02-17-2023 09:39:17][INFO][TestFileLogger][SharpLogger_Tests.LogBrokerInitializeTests.InitializeLogBrokerForDocs] ::: SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME TestFileLogger_6F2A3D46-7747-4832-AC25-4AB12E4BEAB8!
+        
+        [11:17:47][WARN][LogArchiverLogger][InitializeArchiving] ::: ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\...
+        [11:17:47][WARN][LogArchiverLogger][InitializeArchiving] ::: NO LOG FILE ARCHIVE SETS COULD BE BUILT! THIS IS LIKELY BECAUSE THERE AREN'T ENOUGH FILES TO ARCHIVE!
+        [11:17:47][INFO][TestFileLogger][ctor] ::: LOGGER 'TestFileLogger_F2FDA296-D069-47CB-8758-2282A08F28DA' HAS BEEN SPAWNED CORRECTLY!
+        [11:17:47][TRACE][TestFileLogger][ctor] ::: \__ TIME CREATED:   2/17/2023 11:17:47 AM
+        [11:17:47][TRACE][TestFileLogger][ctor] ::: \__ LOGGER GUID:    F2FDA296-D069-47CB-8758-2282A08F28DA
+        [11:17:47][TRACE][TestFileLogger][ctor] ::: \__ IS UNIVERSAL:   YES
+        [11:17:47][TRACE][TestFileLogger][ctor] ::: \__ RULE COUNT:     2 RULES
+        [11:17:47][TRACE][TestFileLogger][ctor] ::: \__ TARGET COUNT:   2 TARGETS
+        [11:17:47][TRACE][TestFileLogger][ctor] ::: \__ LOGGER STRING:  TestFileLogger_F2FDA296-D069-47CB-8758-2282A08F28DA (FileLogger) - 2 Rules and 2 Targets
+        [11:17:47][INFO][TestFileLogger][InitializeLogBrokerForDocs] ::: SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME TestFileLogger_F2FDA296-D069-47CB-8758-2282A08F28DA!
         ```
 --- 
 

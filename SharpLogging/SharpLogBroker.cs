@@ -268,6 +268,9 @@ namespace SharpLogging
                 $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length != 1 ? "s" : string.Empty)} Constructed\n" +
                 $"\t\\__ Master Logger:  {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
+                $"\t\\__ Targets Built:  {LoggingTargets.Length} Logging Target{(LoggingTargets.Length != 1 ? "s" : string.Empty)} Constructed\n" +
+                $"\t\\__ Rules Defined:  {LoggingRules.Length} Logging Rule{(LoggingRules.Length != 1 ? "s" : string.Empty)} Defined\n" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
                 $"\t\\__ Broker Config (JSON):\n\t\t{JsonConvert.SerializeObject(LogBrokerConfig, Formatting.Indented).Replace("\n", "\n\t\t")}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
 
