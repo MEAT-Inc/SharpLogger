@@ -1,36 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SharpLogger_Tests.TestInvokers;
 
 namespace SharpLogger_Tests
 {
     /// <summary>
-    /// Helper class holding routines that are commonly used across all different test suites
+    /// Static class used to run common routines on the ALS Suite unit test cases
     /// </summary>
     internal static class LoggerTestHelpers
     {
-        #region Custom Events
-        #endregion //Custom Events
-
-        #region Fields
-        
         // Constants for logging output
-        private static readonly int _splittingLineSize = 100;               // Size of the splitting lines to write in console output
+        private static readonly int _splittingLineSize = 120;               // Size of the splitting lines to write in console output
         private static readonly string _splittingLineChar = "=";            // Character to use in the splitting line output
 
-        #endregion //Fields
-
-        #region Properties
-        #endregion //Properties
-
-        #region Structs and Classes
-        #endregion //Structs and Classes
+        // Static binding flags used for reflection inside invoker instances
+        public static readonly BindingFlags SearchFlags =
+            BindingFlags.NonPublic | BindingFlags.Instance |
+            BindingFlags.Public | BindingFlags.FlattenHierarchy;
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
-        
+
         /// <summary>
         /// Prints out a splitting line in the console window during unit tests
         /// </summary>
@@ -79,6 +72,89 @@ namespace SharpLogger_Tests
             if (!string.IsNullOrWhiteSpace(Message)) Console.WriteLine(Message);
             Console.WriteLine();
             SeparateConsole();
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Logs out the names of all the built backing invokers for a Unit Test suite instance
+        /// </summary>
+        /// <param name="TestSuite">The sending suite instance we need to log information for</param>
+        public static bool ValidateBackingInvokersBuilt(object TestSuite)
+        {
+            // Store the test suite type first and find the fields values needed for it
+            Type TestSuiteType = TestSuite.GetType();
+            List<Tuple<FieldInfo, object>> InvokerFields = TestSuiteType
+                .GetFields(SearchFlags)
+                .Where(FieldObj => FieldObj.Name.EndsWith("Invoker"))
+                .Select(InvokerField => new Tuple<FieldInfo, object>(InvokerField, InvokerField.GetValue(TestSuite)))
+                .ToList();
+
+            // Build a list of name values with a number attached to each one of them now
+            List<string> InvokerStates = InvokerFields
+                .Select(InvokerField =>
+                {
+                    // Store basic information about each invoker field here
+                    string InvokerName = InvokerField.Item1.Name;
+                    int InvokerIndex = InvokerFields.IndexOf(InvokerField) + 1;
+                    string InvokerState = InvokerField.Item2 == null
+                        ? "Creation Failed!"
+                        : "Created Successfully";
+
+                    // Build a new string for the invoker instance and return it out
+                    return $"{InvokerIndex}) {InvokerName} - {InvokerState}";
+                }).ToList();
+
+            // Join the built list of backing invoker names 
+            Console.WriteLine($"\t--> Backing invokers for test suite {TestSuiteType.Name} are being shown below:");
+            foreach (var InvokerState in InvokerStates) Console.WriteLine($"\t\t--> {InvokerState}");
+
+            // Assert all built invoker objects are real and ready
+            return InvokerFields.All(InvokerFieldValue => InvokerFieldValue.Item2 != null);
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Used to write out debug information when an exception is processed during a unit test
+        /// </summary>
+        /// <param name="Message">Message to log out to the console"</param>
+        /// <param name="ThrownException">The exception which we should log</param>
+        /// <param name="AssertFailure">When true, the test suite asserts a failed test result</param>
+        /// <param name="SendingMethod">The name of the method who threw this exception</param>
+        public static void AssertException(string Message, Exception ThrownException, bool AssertFailure = true, [CallerMemberName] string SendingMethod = "")
+        {
+            // Split up our console
+            Console.WriteLine();
+            SeparateConsole();
+
+            // Print out the requested debug information
+            Console.WriteLine(Message + "\n");
+            Console.WriteLine($"Exception Message: {ThrownException.Message}");
+            Console.WriteLine($"Exception Stack Trace:\n{ThrownException.StackTrace}\n");
+
+            // If the inner exception is not null, log it out
+            if (ThrownException.InnerException != null)
+            {
+                Console.WriteLine($"\tInner Exception Message: " + ThrownException.InnerException.Message
+                    .Split(new[] { "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .FirstOrDefault());
+
+                // Clean up the inner stack trace messages and print them out
+                string InnerStackMessage = ThrownException.InnerException.StackTrace;
+                var InnerStackSplit = InnerStackMessage
+                    .Split(new[] { "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(StringPart => $"\t\t{StringPart.Trim()}");
+
+                // Build the final inner stack trace message and log it out
+                InnerStackMessage = string.Join("\n", InnerStackSplit);
+                Console.WriteLine($"\tInner Exception Stack Trace:\n{InnerStackMessage}\n");
+            }
+
+            // Split the console once more and throw the failure if requested to do so
+            SeparateConsole();
+            if (!AssertFailure) return; 
+            Assert.Fail($"{Message} -- [{ThrownException.GetType().Name}] -- Thrown from method: {SendingMethod}!");
         }
     }
 }

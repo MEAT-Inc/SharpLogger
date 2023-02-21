@@ -1,12 +1,11 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
 using SharpLogging;
 
-namespace SharpLogger_Tests
+namespace SharpLogger_Tests.TestSuites
 {
     /// <summary>
     /// Main test class used to build test instances of broker and archiver configuration structures.

@@ -256,7 +256,7 @@ namespace SharpLogging
 
             // Build the output string to return based on properties
             string OutputString =
-                $"\n\nLog Broker Information - '{LogBrokerName}' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"Log Broker Information - '{LogBrokerName}' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Broker Status:  {(_logBrokerInitialized ? "Log Broker Ready!" : "Not Configured!")}\n" +
                 $"\t\\__ Creation Time:  {_brokerCreated:g}\n" +
                 $"\t\\__ Logging State:  {(LoggingEnabled ? "Logging Currently ON" : "Logging Currently OFF")}\n" +
@@ -392,9 +392,8 @@ namespace SharpLogging
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             LogManager.Configuration = new LoggingConfiguration();
             MasterLogger = new SharpLogger(LoggerActions.UniversalLogger,"LogBrokerLogger");
-            MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.WarnLog);
-            MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!", LogType.InfoLog);
-            MasterLogger.WriteLog(ToString(), LogType.TraceLog);
+            MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.InfoLog);
+            MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!\n\n{ToString()}", LogType.TraceLog);
             
             // Return passed at this point since we've written all our logging routines out
             return _logBrokerInitialized;

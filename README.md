@@ -17,7 +17,7 @@ The SharpLogger supports three main logging output types at this point, with sup
     ### **SharpLogBroker Setup**
     - Keep in mind than when configuring the LogBroker, you *must* configure it at the very start of your program (inside App.xaml.cs or Main), in order to ensure that all packages/loggers are ready to use when they're called. 
     - A sample `SharpLogBroker.BrokerConfiguration` JSON payload would be something similar to what is shown below.
-    - The`$LOGGER_TIME` keyword is used to insert the Date and Time logging started into the log file name where you specify. So for this file, we would end up having a file name of something like `MyCoolCSharpApp_Logging_02172023-111747.log`.
+    - The `$LOGGER_TIME` keyword is used to insert the Date and Time logging started into the log file name where you specify. So for this file, we would end up having a file name of something like `MyCoolCSharpApp_Logging_02172023-111747.log`.
     - If any of these values are left empty/null when the configuration is loaded in, the default/fallback values will be applied to the configuration object. Some of those defaults are listed below
         - `LogBrokerName` - Will default to the name of the EXE/Service that is calling this logging session with the word Logger appended to it. (Example: MyCoolCSharpAppLogging)
         - `LogFilePath` - Will default to the base location of the calling executable. (Example: `C:\Program Files (x86)\MyOrg\MyCoolSharpApp\MyCoolCSharpApp.exe` would store `C:\Program Files (x86)\MyOrg\MyCoolSharpApp`)
