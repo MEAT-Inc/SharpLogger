@@ -159,6 +159,9 @@ namespace SharpLogging
         private SharpFileTargetFormat _fileLoggerFormat;                    // Configuration to build File format strings
         private SharpConsoleTargetFormat _consoleLoggerFormat;              // Configuration to build Console format strings
         
+        // Private backing fields for scope properties
+        private List<KeyValuePair<string, object>> _scopeProperties;        // Used to setup logging output variables in string formats
+
         #endregion //Fields
 
         #region Properties
@@ -280,6 +283,13 @@ namespace SharpLogging
             }
         }
 
+        // Public facing scope properties used to configure logging output variables
+        public KeyValuePair<string, object>[] ScopeProperties
+        {
+            get => this._evaluateScopeProperties();
+            private set => this._scopeProperties = value.ToList();
+        }
+
         // Public facing collection of supported logging types
         public LoggerActions LoggerType
         {
@@ -303,8 +313,12 @@ namespace SharpLogging
         /// <returns>String holding information about this logger</returns>
         public override string ToString()
         {
-            // Build and return a new string value here
-            string LoggerString = $"{this.LoggerName} ({this.LoggerType}) - {this.LoggerRules.Length} Rules and {this.LoggerTargets.Length} Targets";
+            // Build and return a new string value here which will hold our logger information
+            string LoggerString = $"{this.LoggerName} ({this.LoggerType}) - ";
+            LoggerString += $"{this.LoggerRules.Length} Rule{(this.LoggerRules.Length == 1 ? string.Empty : "s")} ".Trim();
+            LoggerString += $"{this.LoggerTargets.Length} Target{(this.LoggerTargets.Length == 1 ? string.Empty : "s")}";
+
+            // Return the built string holding our logger values
             return LoggerString;
         }
         /// <summary>
@@ -381,6 +395,15 @@ namespace SharpLogging
             this._loggerRules.CollectionChanged += this._loggerRulesOnCollectionChanged;
             this._loggerTargets.CollectionChanged += this._loggerTargetsOnCollectionChanged;
 
+            // Configure the basic scope properties for this logging instance now
+            this._scopeProperties = new List<KeyValuePair<string, object>>()
+            {
+                new("calling-class", null),
+                new("calling-class-short", null),
+                new("logger-name", this.LoggerName),
+                new("logger-class", this.LoggerClass)
+            };
+
             // Now store new targets for these loggers based on the types provided
             if (this.IsFileLogger || this.IsUniversalLogger)
             {
@@ -395,15 +418,22 @@ namespace SharpLogging
                     throw new InvalidOperationException($"Error! Failed to store default console target for logger {this.LoggerName}!");
             }
 
-            // Print out some logger information values and store this logger in our broker pool
+            // Get our instance NLogger and setup an information string
             this._nLogger = LogManager.GetLogger(this.LoggerName);
+            string LoggerInfoString =
+                $"Logger {this.LoggerName}\n" +
+                $"\t\\__ Logger Type:     {this.LoggerType}\n" +
+                $"\t\\__ Constructed:     {this.TimeCreated:G}\n" +
+                $"\t\\__ Logger GUID:     {this.LoggerGuid.ToString("D").ToUpper()}\n" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
+                $"\t\\__ Is Universal:    {(this.IsUniversalLogger ? "Universal Logger" : "Target Dependent")}\n" +
+                $"\t\\__ Logger Rules:    {this._loggerRules.Count} Logging Rule{(this._loggerRules.Count == 1 ? string.Empty : "s")}\n" +
+                $"\t\\__ Logger Targets:  {this._loggerTargets.Count} Logging Target{(this._loggerTargets.Count == 1 ? string.Empty : "s")}\n" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
+
+            // Print out some logger information values and store this logger in our broker pool
             this.WriteLog($"LOGGER '{this.LoggerName}' HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
-            this.WriteLog($"\\__ TIME CREATED:   {this.TimeCreated:G}", LogType.TraceLog);
-            this.WriteLog($"\\__ LOGGER GUID:    {this.LoggerGuid.ToString("D").ToUpper()}", LogType.TraceLog);
-            this.WriteLog($"\\__ IS UNIVERSAL:   {(this.IsUniversalLogger ? "YES" : "NO")}", LogType.TraceLog);
-            this.WriteLog($"\\__ RULE COUNT:     {this._loggerRules.Count} RULES", LogType.TraceLog);
-            this.WriteLog($"\\__ TARGET COUNT:   {this._loggerTargets.Count} TARGETS", LogType.TraceLog);
-            this.WriteLog($"\\__ LOGGER STRING:  {this}", LogType.TraceLog);
+            this.WriteLog($"LOGGER INFORMATION IS BEING SHOWN BELOW\n\n{LoggerInfoString}", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
             if (!SharpLogBroker.RegisterLogger(this))
@@ -456,7 +486,6 @@ namespace SharpLogging
                 }
             }
         }
-
         /// <summary>
         /// Writes an exceptions contents out to the logger
         /// </summary>
@@ -467,16 +496,8 @@ namespace SharpLogging
             // Make sure logging is not set to off right now
             if (!this.LoggingEnabled) return;
 
-            // Configure a set of new scope properties for our output content log entries
-            var ScopeProperties = new KeyValuePair<string, object>[]
-            {
-                new("logger-class", this.LoggerClass),
-                new("calling-class", this._getCallingClass()),
-                new("calling-class-short", this._getCallingClass(true)),
-            };
-
             // Using the built scope properties, write our log entries out to the targets now
-            using (this._nLogger.PushScopeProperties(ScopeProperties))
+            using (this._nLogger.PushScopeProperties(this.ScopeProperties))
             {
                 // If the exception thrown is null, don't do any of this
                 if (LoggedEx == null) return;
@@ -509,16 +530,8 @@ namespace SharpLogging
             if (LogLevels.Length == 0) { LogLevels = new LogType[] { LogType.ErrorLog, LogType.ErrorLog }; }
             if (LogLevels.Length == 1) { LogLevels = LogLevels.Append(LogLevels[0]).ToArray(); }
 
-            // Configure a set of new scope properties for our output content log entries
-            var ScopeProperties = new KeyValuePair<string, object>[]
-            {
-                new("logger-class", this.LoggerClass),
-                new("calling-class", this._getCallingClass()),
-                new("calling-class-short", this._getCallingClass(true)),
-            };
-
             // Write Log Message then exception and all information found from the exception here
-            using (this._nLogger.PushScopeProperties(ScopeProperties))
+            using (this._nLogger.PushScopeProperties(this.ScopeProperties))
             {
                 // If the exception thrown is null, don't do any of this
                 if (LoggedEx == null) return;
@@ -539,7 +552,6 @@ namespace SharpLogging
                 this.WriteException(MessageExInfo, LoggedEx.InnerException, LogLevels);
             }
         }
-
         /// <summary>
         /// Writes an object of any kind out as a JSON string to the log file
         /// </summary>
@@ -551,17 +563,9 @@ namespace SharpLogging
             // Make sure logging is not set to off right now
             if (!this.LoggingEnabled) return;
 
-            // Configure a set of new scope properties for our output content log entries
-            var ScopeProperties = new KeyValuePair<string, object>[]
-            {
-                new("logger-class", this.LoggerClass),
-                new("calling-class", this._getCallingClass()),
-                new("calling-class-short", this._getCallingClass(true)),
-            };
-
             // Convert the object to a string and split it out based on new line characters if we're using JSON tabs
             string ObjectString = JsonConvert.SerializeObject(ObjectToLog, UseTabs ? Formatting.Indented : Formatting.None);
-            using (this._nLogger.PushScopeProperties(ScopeProperties))
+            using (this._nLogger.PushScopeProperties(this.ScopeProperties))
             {
                 // If not using tab formatting, then just write the string out
                 if (!UseTabs) this._nLogger.Log(Level.ToNLevel(), ObjectString);
@@ -577,6 +581,36 @@ namespace SharpLogging
                         this._nLogger.Log(Level.ToNLevel(), ObjectJsonString);
                 }
             }
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Sets new scope properties onto our logger instances and clears out the old values
+        /// </summary>
+        /// <param name="PropertiesToAdd">The properties to include in the scope class</param>
+        public void SetScopeProperties(params KeyValuePair<string, object>[] PropertiesToAdd)
+        {
+            // Take each of these property values built and store them on our instance
+            this._scopeProperties = PropertiesToAdd.ToList();
+        }
+        /// <summary>
+        /// Inserts new scope properties onto our logger instances
+        /// </summary>
+        /// <param name="PropertiesToAdd">The properties to include in the scope class</param>
+        public void AddScopeProperties(params KeyValuePair<string, object>[] PropertiesToAdd)
+        {
+            // Take each of these property values built and store them on our instance
+            this._scopeProperties.AddRange(PropertiesToAdd);
+        }
+        /// <summary>
+        /// Removes desired scope properties from the logger instance by name lookups
+        /// </summary>
+        /// <param name="PropertiesToRemove">The names of the properties to remove from the scope class</param>
+        public void RemoveScopeProperties(params string[] PropertiesToRemove)
+        {
+            // Loop all the names and remove the properties from the collection as needed
+            this._scopeProperties.RemoveAll(PropPair => PropertiesToRemove.Contains(PropPair.Key));
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -652,11 +686,15 @@ namespace SharpLogging
         /// <summary>
         /// Gets the name of the calling method.
         /// </summary>
+        /// <param name="SkipFrames">The number of frames to skip when running this method. Used to get correct names when evaluating properties</param>
         /// <returns>String of the full method name.</returns>
-        private string _getCallingClass(bool SplitString = false)
+        private string _getCallingClass(bool SplitString = false, int SkipFrames = 2)
         {
-            // Setup values.
-            string FullCallName; Type DeclaredType; int SkipFrames = 2;
+            // Setup values for finding our calling type 
+            Type DeclaredType;      // The type being declared to call this method
+            string FullCallName;    // The full name of the call to return out
+
+            // Iterate the stack frame while possible or until our declared type is null
             do
             {
                 // Find the current method caller and store the stack. 
@@ -677,6 +715,35 @@ namespace SharpLogging
 
             // Return the name here.
             return FullCallName;
+        }
+        /// <summary>
+        /// Calculates the values in the scope properties to log out to our targets
+        /// </summary>
+        /// <returns>The calculated scope properties for our output log line values</returns>
+        private KeyValuePair<string, object>[] _evaluateScopeProperties()
+        {
+            // Setup an output list of values to log out
+            var OutputProperties = new List<KeyValuePair<string, object>>();
+
+            // Look at all of our scope properties and find their values here
+            foreach (var ScopeProperty in this._scopeProperties)
+            {
+                // Look at our string value here and calculate the value if needed
+                if (ScopeProperty.Key == "calling-class")
+                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class", this._getCallingClass(false, 3)));
+                else if (ScopeProperty.Key == "calling-class-short")
+                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class-short", this._getCallingClass(true, 3)));
+                else if (ScopeProperty.Value is Func<object> ScopeFunction)
+                    OutputProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeFunction.Invoke().ToString()));
+                else
+                {
+                    // If it's not a calling class value or a calculated value, then just copy the value across here
+                    OutputProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeProperty.Value));
+                }
+            }
+
+            // Once done looping our values, return out the built list of properties
+            return OutputProperties.ToArray();
         }
     }
 }

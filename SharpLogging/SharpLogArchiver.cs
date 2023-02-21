@@ -223,7 +223,7 @@ namespace SharpLogging
 
             // Build the output string to return based on properties
             string OutputString =
-                $"\n\nLog Archiver Information - '{SharpLogBroker.LogBrokerName} (Archives)' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
+                $"Log Archiver Information - '{SharpLogBroker.LogBrokerName} (Archives)' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Archiver State:  {(_logArchiverInitialized ? "Archiver Ready!" : "Archiver Not Configured!")}\n" +
                 $"\t\\__ Creation Time:   {_archiverCreated:g}\n" +
                 $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} file{(LogArchiveConfig.ArchiveFileSetSize != 1 ? "s" : string.Empty)}\n" +
@@ -267,18 +267,18 @@ namespace SharpLogging
             if (_logArchiveConfig.ArchiveFileSetSize <= 0) _logArchiveConfig.ArchiveFileSetSize = 15;
             if (_logArchiveConfig.ArchiveOnFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 20;
             if (_logArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
-            if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchiveFileFilter))
-            {
-                // Find the needed splitting character for the search filter to build and build the new filter value
-                char SplittingChar = SharpLogBroker.LogFileName.Contains("_") ? '_' : '.';
-                _logArchiveConfig.ArchiveFileFilter = $"{SharpLogBroker.LogFileName.Split(SplittingChar).FirstOrDefault()}*.*";
-            }
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchivePath))
                 _logArchiveConfig.ArchivePath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.SearchPath))
                 _logArchiveConfig.SearchPath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
             if (_logArchiveConfig.SearchPath == _logArchiveConfig.ArchivePath)
                 _logArchiveConfig.ArchivePath = Path.GetFullPath(Path.Combine(_logArchiveConfig.ArchivePath, "LogArchives"));
+            if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchiveFileFilter))
+            {
+                // Find the needed splitting character for the search filter to build and build the new filter value
+                char SplittingChar = SharpLogBroker.LogFileName.Contains("_") ? '_' : '.';
+                _logArchiveConfig.ArchiveFileFilter = $"{SharpLogBroker.LogFileName.Split(SplittingChar).FirstOrDefault()}*.*";
+            }
 
             // Ensure our new archive configuration values can be used for this routine
             if (_logArchiveConfig.SearchPath == null || !Directory.Exists(_logArchiveConfig.SearchPath)) return false;
@@ -287,7 +287,7 @@ namespace SharpLogging
             _logArchiverInitialized = true;
             _archiveLogger = new SharpLogger(LoggerActions.UniversalLogger, "LogArchiverLogger");
             _archiveLogger.WriteLog("ARCHIVE HELPER BUILT WITHOUT ISSUES! READY TO PULL IN ARCHIVES USING PROVIDED CONFIGURATION!", LogType.InfoLog);
-            _archiveLogger.WriteLog(ToString(), LogType.TraceLog);
+            _archiveLogger.WriteLog($"SHOWING LOG ARCHIVER STATE AND CONFIGURATION BELOW\n\n{ToString()}", LogType.TraceLog);
 
             // Find all the files to be archived now and setup triggers for file counts
             _archiveLogger.WriteLog($"ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: {_logArchiveConfig.SearchPath}...", LogType.WarnLog);
@@ -340,7 +340,7 @@ namespace SharpLogging
                 _archiveLogger.WriteLog($"--> ARCHIVE FILE WILL HOLD {ArchiveSet.Length} FILES STARTING FROM {ArchiveSet.First()} THROUGH {ArchiveSet.Last()}");
             }
 
-            // Return out based on the number of files found for our archives
+            // Once our configuration is done, exit out with a passed state
             return _logArchiverInitialized;
         }
 
