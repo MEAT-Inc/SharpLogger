@@ -370,7 +370,7 @@ namespace SharpLogging
                 KeepFileOpen = false,
                 FileName = LogFilePath,
                 ConcurrentWrites = true,
-                Layout = new SimpleLayout(DefaultConsoleFormat.LoggerFormatString),
+                Layout = new SimpleLayout(DefaultFileFormat.LoggerFormatString),
             };
 
             // Store new values for our master console target and setup the configuration for it
