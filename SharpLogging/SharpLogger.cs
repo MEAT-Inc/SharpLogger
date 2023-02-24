@@ -315,7 +315,7 @@ namespace SharpLogging
         {
             // Build and return a new string value here which will hold our logger information
             string LoggerString = $"{this.LoggerName} ({this.LoggerType}) - ";
-            LoggerString += $"{this.LoggerRules.Length} Rule{(this.LoggerRules.Length == 1 ? string.Empty : "s")} ".Trim();
+            LoggerString += $"{this.LoggerRules.Length} Rule{(this.LoggerRules.Length == 1 ? string.Empty : "s")} - ";
             LoggerString += $"{this.LoggerTargets.Length} Target{(this.LoggerTargets.Length == 1 ? string.Empty : "s")}";
 
             // Return the built string holding our logger values
@@ -380,13 +380,13 @@ namespace SharpLogging
 
             // Store values and configure the name/GUID/time values for this logger instance now
             this.LoggerType = LoggerType;
-            this.LoggerClass = LoggerName;
             this.TimeCreated = DateTime.Now;
             this.LoggerGuid = Guid.NewGuid();
+            this.LoggerClass = this._getCallingClass();
 
             // Store new name value for the logger based on the provided input value
             LoggerName = string.IsNullOrWhiteSpace(LoggerName) ? this._getCallingClass(true) : LoggerName;
-            this.LoggerName =  $"{LoggerName}_{LoggerGuid.ToString("D").ToUpper()}";
+            this.LoggerName =  $"{LoggerName}_{this.LoggerGuid.ToString("D").ToUpper()}";
 
             // Build new lists for our logger target types and store event handlers for processing changes
             LogManager.Configuration ??= new LoggingConfiguration();
@@ -399,7 +399,9 @@ namespace SharpLogging
             this._scopeProperties = new List<KeyValuePair<string, object>>()
             {
                 new("calling-class", null),
+                new("calling-method", null),
                 new("calling-class-short", null),
+                new("calling-method-short", null),
                 new("logger-name", this.LoggerName),
                 new("logger-class", this.LoggerClass)
             };
@@ -433,7 +435,7 @@ namespace SharpLogging
 
             // Print out some logger information values and store this logger in our broker pool
             this.WriteLog($"LOGGER '{this.LoggerName}' HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
-            this.WriteLog($"LOGGER INFORMATION IS BEING SHOWN BELOW\n\n{LoggerInfoString}", LogType.TraceLog);
+            this.WriteLog($"DETAILED LOGGER INFORMATION IS BEING SHOWN BELOW\n\n{LoggerInfoString}", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
             if (!SharpLogBroker.RegisterLogger(this))
@@ -461,15 +463,8 @@ namespace SharpLogging
             // Make sure logging is not set to off right now
             if (!this.LoggingEnabled) return;
 
-            var ScopeProperties = new KeyValuePair<string, object>[]
-            {
-                new("logger-class", this.LoggerClass),
-                new("calling-class", this._getCallingClass()),
-                new("calling-class-short", this._getCallingClass(true)),
-            };
-            
             // Using the built scope properties, write our log entries out to the targets now
-            using (this._nLogger.PushScopeProperties(ScopeProperties))
+            using (this._nLogger.PushScopeProperties(this.ScopeProperties))
             {
                 // Check to see if we've got new line splits in the log message.
                 if (!LogMessage.Contains("\r") && !LogMessage.Contains("\n")) this._nLogger.Log(Level.ToNLevel(), LogMessage);
@@ -688,7 +683,7 @@ namespace SharpLogging
         /// </summary>
         /// <param name="SkipFrames">The number of frames to skip when running this method. Used to get correct names when evaluating properties</param>
         /// <returns>String of the full method name.</returns>
-        private string _getCallingClass(bool SplitString = false, int SkipFrames = 2)
+        private string _getCallingMethod(bool SplitString = false, int SkipFrames = 2)
         {
             // Setup values for finding our calling type 
             Type DeclaredType;      // The type being declared to call this method
@@ -699,23 +694,42 @@ namespace SharpLogging
             {
                 // Find the current method caller and store the stack. 
                 MethodBase MethodBase = new StackFrame(SkipFrames, false).GetMethod();
+                
+                // Store the declared type value here
                 DeclaredType = MethodBase.DeclaringType;
                 if (DeclaredType == null) { return MethodBase.Name; }
 
                 // Skip frame increased and keep checking.
+                FullCallName = (DeclaredType.FullName + "." + MethodBase.Name).Replace("..", ".");
                 SkipFrames++;
-                FullCallName = DeclaredType.FullName + "." + MethodBase.Name;
             }
             while (DeclaredType.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase));
 
-            // Check for split values.
+            // Check for split values and return out accordingly 
             if (!SplitString) { return FullCallName; }
             var FullNameSplit = FullCallName.Split('.');
-            FullCallName = FullNameSplit[FullNameSplit.Length - 1];
-
-            // Return the name here.
-            return FullCallName;
+            return FullNameSplit[FullNameSplit.Length - 1];
         }
+        /// <summary>
+        /// Gets the name of the calling method.
+        /// </summary>
+        /// <param name="SkipFrames">The number of frames to skip when running this method. Used to get correct names when evaluating properties</param>
+        /// <returns>String of the full method name.</returns>
+        private string _getCallingClass(bool SplitString = false, int SkipFrames = 2)
+        {
+            // Find the current method caller and store the stack. 
+            MethodBase MethodBase = new StackFrame(SkipFrames, false).GetMethod();
+            if (MethodBase.DeclaringType == null) return string.Empty;
+
+            // Store the full name value pulled in here
+            string FullClassName = MethodBase.DeclaringType.FullName;
+        
+            // Check for split values and return out accordingly 
+            if (!SplitString) { return FullClassName; }
+            var FullNameSplit = FullClassName.Split('.');
+            return FullNameSplit[FullNameSplit.Length - 1]; 
+        }
+
         /// <summary>
         /// Calculates the values in the scope properties to log out to our targets
         /// </summary>
@@ -729,10 +743,14 @@ namespace SharpLogging
             foreach (var ScopeProperty in this._scopeProperties)
             {
                 // Look at our string value here and calculate the value if needed
-                if (ScopeProperty.Key == "calling-class")
-                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class", this._getCallingClass(false, 3)));
+                if (ScopeProperty.Key == "calling-method")
+                    OutputProperties.Add(new KeyValuePair<string, object>("calling-method", this._getCallingMethod(false, 4)));
+                else if (ScopeProperty.Key == "calling-method-short")
+                    OutputProperties.Add(new KeyValuePair<string, object>("calling-method-short", this._getCallingMethod(true, 4)));
+                else if (ScopeProperty.Key == "calling-class")
+                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class", this._getCallingClass(false, 4)));
                 else if (ScopeProperty.Key == "calling-class-short")
-                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class-short", this._getCallingClass(true, 3)));
+                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class-short", this._getCallingClass(true, 4)));
                 else if (ScopeProperty.Value is Func<object> ScopeFunction)
                     OutputProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeFunction.Invoke().ToString()));
                 else
