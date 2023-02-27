@@ -436,20 +436,9 @@ namespace SharpLogging
 
             // Get our instance NLogger and setup an information string
             this._nLogger = LogManager.GetLogger(this.LoggerName);
-            string LoggerInfoString =
-                $"Logger {this.LoggerName}\n" +
-                $"\t\\__ Logger Type:     {this.LoggerType}\n" +
-                $"\t\\__ Constructed:     {this.TimeCreated:G}\n" +
-                $"\t\\__ Logger GUID:     {this.LoggerGuid.ToString("D").ToUpper()}\n" +
-                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
-                $"\t\\__ Is Universal:    {(this.IsUniversalLogger ? "Universal Logger" : "Target Dependent")}\n" +
-                $"\t\\__ Logger Rules:    {this._loggerRules.Count} Logging Rule{(this._loggerRules.Count == 1 ? string.Empty : "s")}\n" +
-                $"\t\\__ Logger Targets:  {this._loggerTargets.Count} Logging Target{(this._loggerTargets.Count == 1 ? string.Empty : "s")}\n" +
-                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
-
-            // Print out some logger information values and store this logger in our broker pool
             this.WriteLog($"LOGGER '{this.LoggerName}' HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
-            this.WriteLog($"DETAILED LOGGER INFORMATION IS BEING SHOWN BELOW\n\n{LoggerInfoString}", LogType.TraceLog);
+            this.WriteLog($"TOTAL OF {SharpLogBroker.LoggerPool.Length} LOGGERS CURRENTLY EXIST AT THIS POINT");
+            this.WriteLog($"LOGGER INFORMATION HAS BEEN REPORTED AS FOLLOWS: {this}", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
             if (!SharpLogBroker.RegisterLogger(this))
