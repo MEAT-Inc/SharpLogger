@@ -362,10 +362,24 @@ namespace SharpLogging
         /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
         public SharpLogger(LoggerActions LoggerType, string LoggerName = "", LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog)
         {
-            // If the log broker is not built, throw a new exception out
+            // If the broker isn't built, just set it up with no logging levels supported
             if (!SharpLogBroker.LogBrokerInitialized)
-                throw new InvalidOperationException("Error! Please configure the SharpLogBroker before spawning loggers!");
+            {
+                // Define a new log broker configuration and setup the log broker
+                string ExecutingLocation = Assembly.GetExecutingAssembly().Location;
+                SharpLogBroker.BrokerConfiguration BrokerConfiguration = new SharpLogBroker.BrokerConfiguration()
+                {
+                    LogBrokerName = "SharpLogging",           // Name of the logging session
+                    LogFileName = $"SharpLogging.log",        // Name of the log file to write
+                    MinLogLevel = LogType.NoLogging,          // The lowest level of logging (Off for this instance)
+                    MaxLogLevel = LogType.NoLogging,          // The highest level of logging (Off for this instance)
+                    LogFilePath = ExecutingLocation,          // Location to put our output log file (if one is built)
+                };
 
+                // Configure logging now using the newly built logging configuration
+                SharpLogBroker.InitializeLogging(BrokerConfiguration);
+            }
+            
             // Set Min and Max logging levels and make sure they comply with the logging broker
             this.MinLevel = SharpLogBroker.MinLevel == LogType.NoLogging
                 ? LogType.NoLogging
