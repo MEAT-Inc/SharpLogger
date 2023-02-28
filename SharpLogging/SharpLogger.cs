@@ -436,13 +436,14 @@ namespace SharpLogging
 
             // Get our instance NLogger and setup an information string
             this._nLogger = LogManager.GetLogger(this.LoggerName);
-            this.WriteLog($"LOGGER '{this.LoggerName}' HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
-            this.WriteLog($"TOTAL OF {SharpLogBroker.LoggerPool.Length} LOGGERS CURRENTLY EXIST AT THIS POINT");
-            this.WriteLog($"LOGGER INFORMATION HAS BEEN REPORTED AS FOLLOWS: {this}", LogType.TraceLog);
 
             // Add self to queue and validate our _nLogger has been built
             if (!SharpLogBroker.RegisterLogger(this))
                 throw new InvalidOperationException("Error! Failed to register logger on the session broker!");
+            
+            // Log out this logger has been built correctly and exit out 
+            this.WriteLog($"LOGGER '{this.LoggerName}' HAS BEEN SPAWNED CORRECTLY! (LOGGER COUNT: {SharpLogBroker.LoggerPool.Length})", LogType.InfoLog);
+            this.WriteLog($"LOGGER INFORMATION HAS BEEN REPORTED AS FOLLOWS: {this}", LogType.TraceLog);
         }
         /// <summary>
         /// Routine to run when this logger instance is destroyed/released from the broker

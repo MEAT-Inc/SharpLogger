@@ -5,7 +5,7 @@ VisualStudioVersion = 17.3.32825.248
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpLogging", "SharpLogging\SharpLogging.csproj", "{909E0C64-5B20-4267-B57C-87A29383525A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpLogging Tests", "SharpLogging Tests\SharpLogging Tests.csproj", "{6FC33F3E-16F1-4752-AB3C-1F55C14027B5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpLoggingTests", "SharpLoggingTests\SharpLoggingTests.csproj", "{6FC33F3E-16F1-4752-AB3C-1F55C14027B5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
