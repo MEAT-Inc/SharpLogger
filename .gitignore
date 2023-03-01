@@ -389,7 +389,8 @@ FodyWeavers.xsd
 FalconMainAPI/SwaggerDocGenerator/_secrets.js
 
 # Nuget Package Folder
-**/SharpLoggerNuget/
+**/NugetPublish
 
-
-SharpLogging/SharpLoggingNuget/
+SharpWrap2534Nuget/
+**/*Nuget/
+OnBuildNuGet.py

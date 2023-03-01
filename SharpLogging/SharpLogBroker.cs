@@ -92,22 +92,22 @@ namespace SharpLogging
         // Public facing properties holding configuration for logger session configuration
         public static string LogFileName
         {
-            get => _logFileName;
+            get => _logFileName ??= Path.GetFileName(Path.GetTempFileName());
             internal set => _logFileName = value;
         }
         public static string LogFilePath
         {
-            get => _logFilePath;
+            get => _logFilePath ?? Path.Combine(LogFileFolder, LogFileName);
             private set => _logFilePath = value;
         }
         public static string LogFileFolder
         {
-            get => _logFileFolder;
+            get => _logFileFolder ??= Path.GetTempPath();
             private set => _logFileFolder = value;
         }
         public static string LogBrokerName
         {
-            get => _logBrokerName;
+            get => _logBrokerName ?? "SharpLogBroker";
             internal set => _logBrokerName = value;
         }
 
@@ -228,6 +228,12 @@ namespace SharpLogging
                 set => MaxLogLevel = (LogType)Enum.Parse(typeof(LogType), value);
             }
 
+            // Public facing property to tell us if we've got a default configuration or not
+            [JsonIgnore]
+            public bool IsDefault =>
+                this.LogBrokerName == null && this.LogFileName == null && this.LogFilePath == null &&
+                this.MinLogLevel == LogType.NoLogging && this.MaxLogLevel == LogType.NoLogging;
+
             #endregion //Properties
 
             #region Structs and Classes
@@ -277,6 +283,28 @@ namespace SharpLogging
             // Return this built output string here
             return OutputString;
         }
+
+        /// <summary>
+        /// Internal configuration method used to build and apply a no logging/default configuration
+        /// </summary>
+        /// <returns>True if logging is setup, false if it's not</returns>
+        internal static void InitializeLogging()
+        {
+            // Build our default configuration for logging and exit out
+            LogBrokerConfig = new BrokerConfiguration()
+            {
+                LogFilePath = null,                       // Output file path location
+                LogFileName = null,                       // Name of the log file to write
+                LogBrokerName = null,                     // Name of the log broker session      
+                MinLogLevel = LogType.NoLogging,          // The lowest level of logging (Off for this instance)
+                MaxLogLevel = LogType.NoLogging,          // The highest level of logging (Off for this instance)
+            };
+
+            // Turn of logging output routines and store default log levels
+            LoggingEnabled = false;
+            _maxLevel = LogLevel.Off;
+            _minLevel = LogLevel.Off;
+        }
         /// <summary>
         /// Configures a new instance of a log broker for logging configuration/output for an application
         /// When a name of a file is provided to output file path, the name of the log file is used
@@ -284,6 +312,14 @@ namespace SharpLogging
         /// <param name="BrokerConfig">The broker configuration to use for building a new logging session</param>
         public static bool InitializeLogging(BrokerConfiguration BrokerConfig)
         {
+            // If this broker configuration is the default value for logging off, then just apply those values
+            if (BrokerConfig.IsDefault)
+            {
+                // Initialize logging for the default configuration and exit out 
+                InitializeLogging();
+                return false;
+            }
+
             // Start by storing new configuration values for the log broker and archiver configurations
             _brokerCreated = DateTime.Now;
             LogBrokerConfig = BrokerConfig;
