@@ -296,6 +296,7 @@ namespace SharpLogging
             get => this._loggerType;
             set => this.SetField(ref this._loggerType, value);
         }
+        public bool IsCustomLogger => this._loggerType == LoggerActions.CustomLogger;
         public bool IsUniversalLogger => this._loggerType.HasFlag(LoggerActions.UniversalLogger);
         public bool IsFileLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.FileLogger);
         public bool IsConsoleLogger => this.IsUniversalLogger || this._loggerType.HasFlag(LoggerActions.ConsoleLogger);
@@ -317,7 +318,7 @@ namespace SharpLogging
             string LoggerString = $"{this.LoggerName} ({this.LoggerType}) - ";
             LoggerString += $"{this.LoggerRules.Length} Rule{(this.LoggerRules.Length == 1 ? string.Empty : "s")} - ";
             LoggerString += $"{this.LoggerTargets.Length} Target{(this.LoggerTargets.Length == 1 ? string.Empty : "s")}";
-
+            
             // Return the built string holding our logger values
             return LoggerString;
         }
@@ -363,22 +364,7 @@ namespace SharpLogging
         public SharpLogger(LoggerActions LoggerType, string LoggerName = "", LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog)
         {
             // If the broker isn't built, just set it up with no logging levels supported
-            if (!SharpLogBroker.LogBrokerInitialized)
-            {
-                // Define a new log broker configuration and setup the log broker
-                string ExecutingLocation = Assembly.GetExecutingAssembly().Location;
-                SharpLogBroker.BrokerConfiguration BrokerConfiguration = new SharpLogBroker.BrokerConfiguration()
-                {
-                    LogBrokerName = "SharpLogging",           // Name of the logging session
-                    LogFileName = $"SharpLogging.log",        // Name of the log file to write
-                    MinLogLevel = LogType.NoLogging,          // The lowest level of logging (Off for this instance)
-                    MaxLogLevel = LogType.NoLogging,          // The highest level of logging (Off for this instance)
-                    LogFilePath = ExecutingLocation,          // Location to put our output log file (if one is built)
-                };
-
-                // Configure logging now using the newly built logging configuration
-                SharpLogBroker.InitializeLogging(BrokerConfiguration);
-            }
+            if (!SharpLogBroker.LogBrokerInitialized) SharpLogBroker.InitializeLogging();
             
             // Set Min and Max logging levels and make sure they comply with the logging broker
             this.MinLevel = SharpLogBroker.MinLevel == LogType.NoLogging
@@ -404,6 +390,7 @@ namespace SharpLogging
 
             // Build new lists for our logger target types and store event handlers for processing changes
             LogManager.Configuration ??= new LoggingConfiguration();
+            this._nLogger = LogManager.GetLogger(this.LoggerName);
             this._loggerTargets = new ObservableCollection<Target>();
             this._loggerRules = new ObservableCollection<LoggingRule>();
             this._loggerRules.CollectionChanged += this._loggerRulesOnCollectionChanged;
@@ -420,22 +407,21 @@ namespace SharpLogging
                 new("logger-class", this.LoggerClass)
             };
 
-            // Now store new targets for these loggers based on the types provided
-            if (this.IsFileLogger || this.IsUniversalLogger)
+            // If we have the custom logger type specified, then build new default targets for this logger
+            if (!this.IsCustomLogger)
             {
                 // Get our master target from the SharpLogBroker and add a rule into this logger for it
-                if (!this.RegisterTarget(SharpLogBroker.MasterFileTarget))
-                    throw new InvalidOperationException($"Error! Failed to store default file target for logger {this.LoggerName}!");
-            }
-            if (this.IsConsoleLogger || this.IsUniversalLogger)
-            {
-                // Get our master target from the SharpLogBroker and add a rule into this logger for it
-                if (!this.RegisterTarget(SharpLogBroker.MasterConsoleTarget))
-                    throw new InvalidOperationException($"Error! Failed to store default console target for logger {this.LoggerName}!");
-            }
+                if (this.IsFileLogger || this.IsUniversalLogger)
+                    if (!this.RegisterTarget(SharpLogBroker.MasterFileTarget))
+                        throw new InvalidOperationException(
+                            $"Error! Failed to store default file target for logger {this.LoggerName}!");
 
-            // Get our instance NLogger and setup an information string
-            this._nLogger = LogManager.GetLogger(this.LoggerName);
+                    // Get our master target from the SharpLogBroker and add a rule into this logger for it
+                if (this.IsConsoleLogger || this.IsUniversalLogger) 
+                    if (!this.RegisterTarget(SharpLogBroker.MasterConsoleTarget))
+                        throw new InvalidOperationException(
+                            $"Error! Failed to store default console target for logger {this.LoggerName}!");
+            }
 
             // Add self to queue and validate our _nLogger has been built
             if (!SharpLogBroker.RegisterLogger(this))
@@ -453,6 +439,51 @@ namespace SharpLogging
             // Run the dispose method on this object if it needs to be killed
             if (SharpLogBroker.LoggerPool.Contains(this) || SharpLogBroker.FindLoggers(this.LoggerName).Any())
                 this.Dispose();
+        }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
+
+
+        /// <summary>
+        /// Sets new scope properties onto our logger instances and clears out the old values
+        /// </summary>
+        /// <param name="PropertiesToAdd">The properties to include in the scope class</param>
+        public void SetScopeProperties(params KeyValuePair<string, object>[] PropertiesToAdd)
+        {
+            // First make sure we don't have duplicate key values being provided in
+            PropertiesToAdd = PropertiesToAdd
+                .GroupBy(PropObj => PropObj.Key)
+                .Select(PropKeySet => PropKeySet.FirstOrDefault())
+                .ToArray();
+
+            // Take each of these property values built and store them on our instance
+            this._scopeProperties = PropertiesToAdd.ToList();
+        }
+        /// <summary>
+        /// Inserts new scope properties onto our logger instances
+        /// </summary>
+        /// <param name="PropertiesToAdd">The properties to include in the scope class</param>
+        public void AddScopeProperties(params KeyValuePair<string, object>[] PropertiesToAdd)
+        {
+            // Take each of these property values built and store them on our instance
+            foreach (var ScopeProperty in PropertiesToAdd)
+            {
+                // Check if this property key exists or not first by looking for an index matching the name provided
+                int IndexOfExisting = this._scopeProperties.FindIndex(PropObj => PropObj.Key == ScopeProperty.Key);
+
+                // If no match is found, then add this instance in. Otherwise update an existing one
+                if (IndexOfExisting != -1) this._scopeProperties[IndexOfExisting] = ScopeProperty; 
+                else this._scopeProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeProperty.Value));
+            }
+        }
+        /// <summary>
+        /// Removes desired scope properties from the logger instance by name lookups
+        /// </summary>
+        /// <param name="PropertiesToRemove">The names of the properties to remove from the scope class</param>
+        public void RemoveScopeProperties(params string[] PropertiesToRemove)
+        {
+            // Loop all the names and remove the properties from the collection as needed
+            this._scopeProperties.RemoveAll(PropPair => PropertiesToRemove.Contains(PropPair.Key));
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -580,36 +611,6 @@ namespace SharpLogging
                         this._nLogger.Log(Level.ToNLevel(), ObjectJsonString);
                 }
             }
-        }
-
-        // ------------------------------------------------------------------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Sets new scope properties onto our logger instances and clears out the old values
-        /// </summary>
-        /// <param name="PropertiesToAdd">The properties to include in the scope class</param>
-        public void SetScopeProperties(params KeyValuePair<string, object>[] PropertiesToAdd)
-        {
-            // Take each of these property values built and store them on our instance
-            this._scopeProperties = PropertiesToAdd.ToList();
-        }
-        /// <summary>
-        /// Inserts new scope properties onto our logger instances
-        /// </summary>
-        /// <param name="PropertiesToAdd">The properties to include in the scope class</param>
-        public void AddScopeProperties(params KeyValuePair<string, object>[] PropertiesToAdd)
-        {
-            // Take each of these property values built and store them on our instance
-            this._scopeProperties.AddRange(PropertiesToAdd);
-        }
-        /// <summary>
-        /// Removes desired scope properties from the logger instance by name lookups
-        /// </summary>
-        /// <param name="PropertiesToRemove">The names of the properties to remove from the scope class</param>
-        public void RemoveScopeProperties(params string[] PropertiesToRemove)
-        {
-            // Loop all the names and remove the properties from the collection as needed
-            this._scopeProperties.RemoveAll(PropPair => PropertiesToRemove.Contains(PropPair.Key));
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------

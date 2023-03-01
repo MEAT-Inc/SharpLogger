@@ -20,9 +20,10 @@
     public enum LoggerActions : int
     {
         // Main Logger Types. These will be expanded to output to more location over time
-        UniversalLogger = 0x0000000,          // Logger which will write out to all possible formats
+        CustomLogger    = 0x0000000,          // Logger which gets no default target assignments when built
         ConsoleLogger   = 0x0000001,          // Logger made to write to a Console window
         FileLogger      = 0x0000002,          // Logger made to write to a file output
+        UniversalLogger = 0xFFFFFFF,          // Logger which will write out to all possible formats
     }
     /// <summary>
     /// Compression type methods for this compressor
