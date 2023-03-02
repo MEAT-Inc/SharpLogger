@@ -748,23 +748,26 @@ namespace SharpLogging
             var OutputProperties = new List<KeyValuePair<string, object>>();
 
             // Look at all of our scope properties and find their values here
-            foreach (var ScopeProperty in this._scopeProperties)
+            lock (this._scopeProperties)
             {
-                // Look at our string value here and calculate the value if needed
-                if (ScopeProperty.Key == "calling-method")
-                    OutputProperties.Add(new KeyValuePair<string, object>("calling-method", this._getCallingMethod(false, 4)));
-                else if (ScopeProperty.Key == "calling-method-short")
-                    OutputProperties.Add(new KeyValuePair<string, object>("calling-method-short", this._getCallingMethod(true, 4)));
-                else if (ScopeProperty.Key == "calling-class")
-                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class", this._getCallingClass(false, 4)));
-                else if (ScopeProperty.Key == "calling-class-short")
-                    OutputProperties.Add(new KeyValuePair<string, object>("calling-class-short", this._getCallingClass(true, 4)));
-                else if (ScopeProperty.Value is Func<object> ScopeFunction)
-                    OutputProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeFunction.Invoke().ToString()));
-                else
+                foreach (var ScopeProperty in this._scopeProperties)
                 {
-                    // If it's not a calling class value or a calculated value, then just copy the value across here
-                    OutputProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeProperty.Value));
+                    // Look at our string value here and calculate the value if needed
+                    if (ScopeProperty.Key == "calling-method")
+                        OutputProperties.Add(new KeyValuePair<string, object>("calling-method", this._getCallingMethod(false, 4)));
+                    else if (ScopeProperty.Key == "calling-method-short")
+                        OutputProperties.Add(new KeyValuePair<string, object>("calling-method-short", this._getCallingMethod(true, 4)));
+                    else if (ScopeProperty.Key == "calling-class")
+                        OutputProperties.Add(new KeyValuePair<string, object>("calling-class", this._getCallingClass(false, 4)));
+                    else if (ScopeProperty.Key == "calling-class-short")
+                        OutputProperties.Add(new KeyValuePair<string, object>("calling-class-short", this._getCallingClass(true, 4)));
+                    else if (ScopeProperty.Value is Func<object> ScopeFunction)
+                        OutputProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeFunction.Invoke().ToString()));
+                    else
+                    {
+                        // If it's not a calling class value or a calculated value, then just copy the value across here
+                        OutputProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeProperty.Value));
+                    }
                 }
             }
 
