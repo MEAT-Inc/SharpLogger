@@ -457,7 +457,7 @@ namespace SharpLogging
                 .ToArray();
 
             // Take each of these property values built and store them on our instance
-            this._scopeProperties = PropertiesToAdd.ToList();
+            lock (this._scopeProperties) this._scopeProperties = PropertiesToAdd.ToList();
         }
         /// <summary>
         /// Inserts new scope properties onto our logger instances
@@ -465,15 +465,19 @@ namespace SharpLogging
         /// <param name="PropertiesToAdd">The properties to include in the scope class</param>
         public void AddScopeProperties(params KeyValuePair<string, object>[] PropertiesToAdd)
         {
-            // Take each of these property values built and store them on our instance
-            foreach (var ScopeProperty in PropertiesToAdd)
+            // Lock the properties object before trying to use it
+            lock (this._scopeProperties)
             {
-                // Check if this property key exists or not first by looking for an index matching the name provided
-                int IndexOfExisting = this._scopeProperties.FindIndex(PropObj => PropObj.Key == ScopeProperty.Key);
+                // Take each of these property values built and store them on our instance
+                foreach (var ScopeProperty in PropertiesToAdd)
+                {
+                    // Check if this property key exists or not first by looking for an index matching the name provided
+                    int IndexOfExisting = this._scopeProperties.FindIndex(PropObj => PropObj.Key == ScopeProperty.Key);
 
-                // If no match is found, then add this instance in. Otherwise update an existing one
-                if (IndexOfExisting != -1) this._scopeProperties[IndexOfExisting] = ScopeProperty; 
-                else this._scopeProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeProperty.Value));
+                    // If no match is found, then add this instance in. Otherwise update an existing one
+                    if (IndexOfExisting != -1) this._scopeProperties[IndexOfExisting] = ScopeProperty;
+                    else this._scopeProperties.Add(new KeyValuePair<string, object>(ScopeProperty.Key, ScopeProperty.Value));
+                }
             }
         }
         /// <summary>
@@ -483,7 +487,7 @@ namespace SharpLogging
         public void RemoveScopeProperties(params string[] PropertiesToRemove)
         {
             // Loop all the names and remove the properties from the collection as needed
-            this._scopeProperties.RemoveAll(PropPair => PropertiesToRemove.Contains(PropPair.Key));
+            lock (this._scopeProperties) this._scopeProperties.RemoveAll(PropPair => PropertiesToRemove.Contains(PropPair.Key));
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -629,8 +633,7 @@ namespace SharpLogging
                 if (this._loggerTargets.Any(ExistingTarget => ExistingTarget.Name == TargetToRegister.Name))
                     return false;
 
-                // BUG: This seems to be stopping us from using custom formats
-                /*
+                /* BUG: This seems to be stopping us from using custom formats
                  * // If we don't have a target from the master logger, we can apply this loggers configuration to it now
                  * if (TargetToRegister.Name.StartsWith($"Master_{SharpLogBroker.LogBrokerName}"))
                  * {
