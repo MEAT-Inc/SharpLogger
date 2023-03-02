@@ -629,15 +629,18 @@ namespace SharpLogging
                 if (this._loggerTargets.Any(ExistingTarget => ExistingTarget.Name == TargetToRegister.Name))
                     return false;
 
-                // If we don't have a target from the master logger, we can apply this loggers configuration to it now
-                if (!TargetToRegister.Name.StartsWith($"Master_{SharpLogBroker.LogBrokerName}"))
-                {
-                    // For each target on this logger that is NOT the master target type, apply a new format for it
-                    if (TargetToRegister is FileTarget FileLayoutTarget)
-                        FileLayoutTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
-                    if (TargetToRegister is ColoredConsoleTarget ConsoleLayoutTarget)
-                        ConsoleLayoutTarget.Layout = new SimpleLayout(this.ConsoleTargetFormat.LoggerFormatString);
-                }
+                // BUG: This seems to be stopping us from using custom formats
+                /*
+                 * // If we don't have a target from the master logger, we can apply this loggers configuration to it now
+                 * if (TargetToRegister.Name.StartsWith($"Master_{SharpLogBroker.LogBrokerName}"))
+                 * {
+                 *     // For each target on this logger that is NOT the master target type, apply a new format for it
+                 *     if (TargetToRegister is FileTarget FileLayoutTarget)
+                 *         FileLayoutTarget.Layout = new SimpleLayout(this.FileTargetFormat.LoggerFormatString);
+                 *     if (TargetToRegister is ColoredConsoleTarget ConsoleLayoutTarget)
+                 *         ConsoleLayoutTarget.Layout = new SimpleLayout(this.ConsoleTargetFormat.LoggerFormatString);
+                 * }
+                */
 
                 // Now register a new rule for the file target and store it on the logging configuration for NLog
                 LoggingRule CustomTargetRule = new LoggingRule(
