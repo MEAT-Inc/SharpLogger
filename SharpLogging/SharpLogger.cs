@@ -324,8 +324,9 @@ namespace SharpLogging
             // Build and return a new string value here which will hold our logger information
             string LoggerString = $"{this.LoggerName} ({this.LoggerType}) - ";
             LoggerString += $"{this.LoggerRules.Length} Rule{(this.LoggerRules.Length == 1 ? string.Empty : "s")} - ";
-            LoggerString += $"{this.LoggerTargets.Length} Target{(this.LoggerTargets.Length == 1 ? string.Empty : "s")}";
-            
+            LoggerString += $"{this.LoggerTargets.Length} Target{(this.LoggerTargets.Length == 1 ? string.Empty : "s")} - ";
+            LoggerString += $"{this.LoggedExceptions.Length} Exception{(this.LoggerTargets.Length == 1 ? string.Empty : "s")} Logged";
+
             // Return the built string holding our logger values
             return LoggerString;
         }

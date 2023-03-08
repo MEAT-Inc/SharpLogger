@@ -150,7 +150,7 @@ namespace SharpLogging
                 lock (_loggerPool) return _loggerPool.SelectMany(LoggerObj => LoggerObj.LoggerRules).ToArray();
             }
         }
-        public static Exception[] LoggerExceptions
+        public static Exception[] LoggedExceptions
         {
             get
             {
@@ -285,6 +285,7 @@ namespace SharpLogging
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
                 $"\t\\__ Targets Built:  {LoggingTargets.Length} Logging Target{(LoggingTargets.Length != 1 ? "s" : string.Empty)} Constructed\n" +
                 $"\t\\__ Rules Defined:  {LoggingRules.Length} Logging Rule{(LoggingRules.Length != 1 ? "s" : string.Empty)} Defined\n" +
+                $"\t\\__ Logged Errors:  {LoggedExceptions.Length} Exception{(LoggingRules.Length != 1 ? "s" : string.Empty)} Logged\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
                 $"\t\\__ Broker Config (JSON):\n\t\t{JsonConvert.SerializeObject(LogBrokerConfig, Formatting.Indented).Replace("\n", "\n\t\t")}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n";
