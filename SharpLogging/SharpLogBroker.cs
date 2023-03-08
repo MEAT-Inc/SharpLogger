@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -25,26 +26,26 @@ namespace SharpLogging
         #region Fields
 
         // Private backing fields for logger states and values
-        private static bool _logBrokerInitialized;                       // Sets if the log broker has been built or not at this point
-        private static bool _loggingEnabled = true;                      // Sets if logging is currently enabled or disabled for this log broker instance
-        private static LogLevel _minLevel = LogLevel.Off;                // Minimum logging level for this logging session (Defaults to trace for debug)
-        private static LogLevel _maxLevel = LogLevel.Off;                // Maximum logging level for this logging session (Defaults to fatal for all sessions)
+        private static bool _logBrokerInitialized;                          // Sets if the log broker has been built or not at this point
+        private static bool _loggingEnabled = true;                         // Sets if logging is currently enabled or disabled for this log broker instance
+        private static LogLevel _minLevel = LogLevel.Off;                   // Minimum logging level for this logging session (Defaults to trace for debug)
+        private static LogLevel _maxLevel = LogLevel.Off;                   // Maximum logging level for this logging session (Defaults to fatal for all sessions)
                                                                          
         // Private static collection of all current logger instances     
-        private static DateTime _brokerCreated;                          // The time the broker instance was built
-        private static SharpLogger _masterLogger;                        // The main SharpLogger that is used to write our output content to a log file or targets
-        private static BrokerConfiguration _logBrokerConfig;             // Passed in configuration values used to setup this log broker instance
-        private static List<SharpLogger> _loggerPool = new();            // The collection of all built loggers in this instance
-
+        private static DateTime _brokerCreated;                             // The time the broker instance was built
+        private static SharpLogger _masterLogger;                           // The main SharpLogger that is used to write our output content to a log file or targets
+        private static BrokerConfiguration _logBrokerConfig;                // Passed in configuration values used to setup this log broker instance
+        private static List<SharpLogger> _loggerPool = new();               // The collection of all built loggers in this instance
+        
         // Private backing fields for logging path information and logger instance
-        private static string _logFileName;                              // Path to the output log file being used for all logging instances. Shared across all classes
-        private static string _logFilePath;                              // The Path to the output log file minus the log file name. Can not be set using the property
-        private static string _logFileFolder;                            // The path to the folder holding all output logs for this session (Base of the file path)
-        private static string _logBrokerName;                            // Name of the logger instance for this session setup. (Calling application name)
+        private static string _logFileName;                                 // Path to the output log file being used for all logging instances. Shared across all classes
+        private static string _logFilePath;                                 // The Path to the output log file minus the log file name. Can not be set using the property
+        private static string _logFileFolder;                               // The path to the folder holding all output logs for this session (Base of the file path)
+        private static string _logBrokerName;                               // Name of the logger instance for this session setup. (Calling application name)
         
         // Default format objects for writing output to our targets     
-        private static SharpFileTargetFormat _defaultFileFormat;         // Default format for a file target. Contains the output format string and configuration values
-        private static SharpConsoleTargetFormat _defaultConsoleFormat;   // Default format for a console target. Contains the output format string and configuration values
+        private static SharpFileTargetFormat _defaultFileFormat;            // Default format for a file target. Contains the output format string and configuration values
+        private static SharpConsoleTargetFormat _defaultConsoleFormat;      // Default format for a console target. Contains the output format string and configuration values
 
         #endregion //Fields
 
@@ -132,7 +133,7 @@ namespace SharpLogging
             }
         }
 
-        // Logger targets and rules for this log broker instance
+        // Logger targets and rules for this log broker instance along with logged exceptions
         public static Target[] LoggingTargets
         {
             get
@@ -147,6 +148,14 @@ namespace SharpLogging
             {
                 // Ensure the list of rules exists and convert it to an array
                 lock (_loggerPool) return _loggerPool.SelectMany(LoggerObj => LoggerObj.LoggerRules).ToArray();
+            }
+        }
+        public static Exception[] LoggerExceptions
+        {
+            get
+            {
+                // Ensure the list of exceptions exists and convert it to an array
+                lock (_loggerPool) return _loggerPool.SelectMany(LoggerObj => LoggerObj.LoggedExceptions).ToArray();
             }
         }
 
@@ -283,6 +292,8 @@ namespace SharpLogging
             // Return this built output string here
             return OutputString;
         }
+
+        // ------------------------------------------------------------------------------------------------------------------------------------------
 
         /// <summary>
         /// Internal configuration method used to build and apply a no logging/default configuration
