@@ -140,27 +140,26 @@ namespace SharpLogging
         #region Fields
 
         // Private backing fields which hold information about our logger instance
-        private Guid _loggerGuid;                                           // The GUID of this logger object
-        private string _loggerName;                                         // The Name of this logger object
-        private string _loggerClass;                                        // The class which called this logger
-        private DateTime _timeCreated;                                      // The time this logger object was built
+        private Guid _loggerGuid;                                              // The GUID of this logger object
+        private string _loggerName;                                            // The Name of this logger object
+        private string _loggerClass;                                           // The class which called this logger
+        private DateTime _timeCreated;                                         // The time this logger object was built
 
         // Backing fields holding information about the logger levels and actions
-        private LogLevel _minLevel;                                         // Lowest level of supported logging output
-        private LogLevel _maxLevel;                                         // Highest level of supported logging output
-        private LoggerActions _loggerType;                                  // Type of logger being built/controlled
-        private readonly Logger _nLogger;                                   // NLog object that does our output writing
-
-        // Private fields holding information about our built target objects
-        private readonly ObservableCollection<Target> _loggerTargets;       // Collection of built targets for this logger
-        private readonly ObservableCollection<LoggingRule> _loggerRules;    // A collection of rules related to each target
+        private LogLevel _minLevel;                                            // Lowest level of supported logging output
+        private LogLevel _maxLevel;                                            // Highest level of supported logging output
+        private LoggerActions _loggerType;                                     // Type of logger being built/controlled
+        private readonly Logger _nLogger;                                      // NLog object that does our output writing
 
         // Private backing fields which hold our format configurations for output
-        private SharpFileTargetFormat _fileLoggerFormat;                    // Configuration to build File format strings
-        private SharpConsoleTargetFormat _consoleLoggerFormat;              // Configuration to build Console format strings
-        
-        // Private backing fields for scope properties
-        private List<KeyValuePair<string, object>> _scopeProperties;        // Used to setup logging output variables in string formats
+        private SharpFileTargetFormat _fileLoggerFormat;                       // Configuration to build File format strings
+        private SharpConsoleTargetFormat _consoleLoggerFormat;                 // Configuration to build Console format strings
+        private List<KeyValuePair<string, object>> _scopeProperties;           // Used to setup logging output variables in string formats
+
+        // Private fields holding information about our built target objects
+        private readonly ObservableCollection<Target> _loggerTargets;          // Collection of built targets for this logger
+        private readonly ObservableCollection<LoggingRule> _loggerRules;       // A collection of rules related to each target
+        private readonly ObservableCollection<Exception> _loggedExceptions;    // Exceptions thrown and logged by this logger
 
         #endregion //Fields
 
@@ -228,6 +227,14 @@ namespace SharpLogging
             {
                 // Lock the collection of rules and return it out as an array
                 lock (_loggerRules) return _loggerRules.ToArray();
+            }
+        }
+        public Exception[] LoggedExceptions
+        {
+            get
+            {
+                // Lock the exceptions of rules and return it out as an array
+                lock (_loggedExceptions) return _loggedExceptions.ToArray();    
             }
         }
 
@@ -317,8 +324,9 @@ namespace SharpLogging
             // Build and return a new string value here which will hold our logger information
             string LoggerString = $"{this.LoggerName} ({this.LoggerType}) - ";
             LoggerString += $"{this.LoggerRules.Length} Rule{(this.LoggerRules.Length == 1 ? string.Empty : "s")} - ";
-            LoggerString += $"{this.LoggerTargets.Length} Target{(this.LoggerTargets.Length == 1 ? string.Empty : "s")}";
-            
+            LoggerString += $"{this.LoggerTargets.Length} Target{(this.LoggerTargets.Length == 1 ? string.Empty : "s")} - ";
+            LoggerString += $"{this.LoggedExceptions.Length} Exception{(this.LoggerTargets.Length == 1 ? string.Empty : "s")} Logged";
+
             // Return the built string holding our logger values
             return LoggerString;
         }
@@ -393,6 +401,7 @@ namespace SharpLogging
             this._nLogger = LogManager.GetLogger(this.LoggerName);
             this._loggerTargets = new ObservableCollection<Target>();
             this._loggerRules = new ObservableCollection<LoggingRule>();
+            this._loggedExceptions = new ObservableCollection<Exception>();
             this._loggerRules.CollectionChanged += this._loggerRulesOnCollectionChanged;
             this._loggerTargets.CollectionChanged += this._loggerTargetsOnCollectionChanged;
 
@@ -527,7 +536,7 @@ namespace SharpLogging
         /// <param name="Level">Level to log it</param>
         public void WriteException(Exception LoggedEx, LogType Level = LogType.ErrorLog)
         {
-            // Make sure logging is not set to off right now
+            // Make sure logging is not set to off right now and store the exception value
             if (!this.LoggingEnabled) return;
 
             // Using the built scope properties, write our log entries out to the targets now
@@ -535,16 +544,20 @@ namespace SharpLogging
             {
                 // If the exception thrown is null, don't do any of this
                 if (LoggedEx == null) return;
+                lock (this._loggedExceptions) this._loggedExceptions.Add(LoggedEx);
 
                 // Log out information about the exception being thrown
-                this._nLogger.Log(Level.ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx?.TargetSite}. DETAILS ARE SHOWN BELOW");
-                this._nLogger.Log(Level.ToNLevel(), $"\tEX MESSAGE {LoggedEx?.Message}");
-                this._nLogger.Log(Level.ToNLevel(), $"\tEX SOURCE  {LoggedEx?.Source}");
-                this._nLogger.Log(Level.ToNLevel(), $"\tEX TARGET  {LoggedEx?.TargetSite?.Name}");
+                this._nLogger.Log(Level.ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx.TargetSite}. DETAILS ARE SHOWN BELOW");
+                this._nLogger.Log(Level.ToNLevel(), $"\tEX MESSAGE {LoggedEx.Message}");
+                this._nLogger.Log(Level.ToNLevel(), $"\tEX SOURCE  {LoggedEx.Source}");
+                this._nLogger.Log(Level.ToNLevel(), $"\tEX TARGET  {LoggedEx.TargetSite?.Name}");
                 this._nLogger.Log(Level.ToNLevel(),
                     LoggedEx?.StackTrace == null
                         ? "FURTHER DIAGNOSTIC INFO IS NOT AVAILABLE AT THIS TIME."
                         : $"\tEX STACK\n{LoggedEx.StackTrace.Replace("\n", "\n\t")}");
+
+                // Check to see if our inner exception is null or not
+                if (LoggedEx.InnerException == null) return;
 
                 // If our inner exception is not null, run it through this logger.
                 this._nLogger.Log(Level.ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
@@ -561,7 +574,7 @@ namespace SharpLogging
         {
             // Check level count and make sure logging is set to on
             if (!this.LoggingEnabled) return;
-            if (LogLevels.Length == 0) { LogLevels = new LogType[] { LogType.ErrorLog, LogType.ErrorLog }; }
+            if (LogLevels.Length == 0) { LogLevels = new[] { LogType.ErrorLog, LogType.ErrorLog }; }
             if (LogLevels.Length == 1) { LogLevels = LogLevels.Append(LogLevels[0]).ToArray(); }
 
             // Write Log Message then exception and all information found from the exception here
@@ -569,21 +582,25 @@ namespace SharpLogging
             {
                 // If the exception thrown is null, don't do any of this
                 if (LoggedEx == null) return;
+                lock (this._loggedExceptions) this._loggedExceptions.Add(LoggedEx);
 
                 // Log out information about the exception being thrown
                 this._nLogger.Log(LogLevels[0].ToNLevel(), MessageExInfo);
-                this._nLogger.Log(LogLevels[0].ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx?.TargetSite}. DETAILS ARE SHOWN BELOW");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX MESSAGE {LoggedEx?.Message}");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX SOURCE  {LoggedEx?.Source}");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX TARGET  {LoggedEx?.TargetSite?.Name}");
+                this._nLogger.Log(LogLevels[0].ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx.TargetSite}. DETAILS ARE SHOWN BELOW");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX MESSAGE {LoggedEx.Message}");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX SOURCE  {LoggedEx.Source}");
+                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX TARGET  {LoggedEx.TargetSite?.Name}");
                 this._nLogger.Log(LogLevels[1].ToNLevel(),
                     LoggedEx?.StackTrace == null
                         ? "FURTHER DIAGNOSTIC INFO IS NOT AVAILABLE AT THIS TIME."
                         : $"\tEX STACK\n{LoggedEx.StackTrace.Replace("\n", "\n\t")}");
 
+                // Check to see if our inner exception is null or not
+                if (LoggedEx.InnerException == null) return;
+
                 // If our inner exception is not null, run it through this logger.
                 this._nLogger.Log(LogLevels[1].ToNLevel(), "EXCEPTION CONTAINS CHILD EXCEPTION! LOGGING IT NOW");
-                this.WriteException(MessageExInfo, LoggedEx.InnerException, LogLevels);
+                this.WriteException($"[INNER EXCEPTION] ::: {MessageExInfo}", LoggedEx.InnerException, LogLevels);
             }
         }
         /// <summary>
