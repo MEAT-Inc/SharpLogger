@@ -476,5 +476,63 @@ namespace SharpLogging
             // Return based on if any archives failed to delete or not
             return CleanupPassed;
         }
+        /// <summary>
+        /// Looks at all the child paths inside our main log folder and purges those folders out where requested.
+        /// </summary>
+        /// <param name="FolderFilter">The filter to use when looking at subfolders</param>
+        /// <returns>True if the paths are cleaned up. False if not</returns>
+        public static bool CleanupSubdirectories(string FolderFilter = "*Logs")
+        {
+            // Make sure archiving is configured first
+            if (!_logArchiverInitialized)
+            {
+                // Log out that archiving is not configured and must be setup
+                SharpLogBroker.MasterLogger.WriteLog("ERROR! THE LOG ARCHIVER HAS NOT YET BEEN CONFIGURED! PLEASE SET IT UP BEFORE ARCHIVING!");
+                SharpLogBroker.MasterLogger.WriteException(new InvalidOperationException("Error! Please setup the SharpLogArchiver before using it"));
+                return false;
+            }
+
+            // Find all directories in the main logging folder and purge them out now
+            string[] LoggingSubFolders = Directory.GetDirectories(SharpLogBroker.LogFileFolder, FolderFilter);
+            _archiveLogger.WriteLog($"FOUND A TOTAL OF {LoggingSubFolders.Length} SUBFOLDERS TO CHECK FOR LOGS TO PURGE!", LogType.InfoLog);
+            foreach (var LoggingSubFolder in LoggingSubFolders)
+            {
+                // Log we're cleaning out this sub folder now and purge it
+                string[] LoggingSubFiles = Directory.GetFiles(LoggingSubFolder);
+                if (LoggingSubFiles.Length < LogArchiveConfig.ArchiveOnFileCount)
+                {
+                    // Log we're skipping this path value and move on
+                    _archiveLogger.WriteLog($"--> NOT PURGING PATH {Path.GetDirectoryName(LoggingSubFolder)}! ONLY {LoggingSubFiles.Length} FILES FOUND");
+                    continue;
+                }
+
+                // Log that we're now purging this subfolder and remove all files where needed
+                _archiveLogger.WriteLog($"--> PURGING SUBFOLDER {Path.GetDirectoryName(LoggingSubFolder)}...");
+                LoggingSubFiles = LoggingSubFiles
+                    .OrderBy(FileFound => new FileInfo(FileFound).CreationTime)
+                    .Take(LogArchiveConfig.ArchiveCleanupFileCount)
+                    .ToArray();
+
+                // Now remove every file from this newly built subset of file paths
+                foreach (var LogFile in LoggingSubFiles)
+                {
+                    try
+                    {
+                        // Delete the file here in a try catch block
+                        File.Delete(LogFile);
+                    }
+                    catch (Exception DeleteLogEx)
+                    {
+                        // Throw and log a failure out when this delete routine fails for some reason
+                        _archiveLogger.WriteException($"ERROR! FAILED TO DELETE LOG FILE {LogFile}!", DeleteLogEx, LogType.ErrorLog);
+                    }
+                }
+            }
+
+            // Return true at this point
+            _archiveLogger.WriteLog("CHECKED ALL LOGGING SUBFOLDER PATHS AND CLEANED UP WHERE NEEDED!", LogType.InfoLog);
+            return true;
+        }
+
     }
 }
