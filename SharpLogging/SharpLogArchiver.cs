@@ -432,8 +432,8 @@ namespace SharpLogging
 
             // Build a correct filter for our archive values here and find all needed files
             string ExtensionValue = LogArchiveConfig.CompressionStyle == CompressionType.ZipCompression 
-                ? $"{SharpLogBroker.LogBrokerName}*.zip*".Trim()
-                : $"{SharpLogBroker.LogBrokerName}*.gz*".Trim();
+                ? $"{SharpLogBroker.LogBrokerName}*.zip".Trim()
+                : $"{SharpLogBroker.LogBrokerName}*.gz".Trim();
 
             // Log that we're trying to prune/cleanup our archive files found from our archive path now
             var LogArchivesLocated = Directory
