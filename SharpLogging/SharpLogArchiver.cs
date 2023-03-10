@@ -502,12 +502,12 @@ namespace SharpLogging
                 if (LoggingSubFiles.Length < LogArchiveConfig.ArchiveOnFileCount)
                 {
                     // Log we're skipping this path value and move on
-                    _archiveLogger.WriteLog($"--> NOT PURGING PATH {Path.GetDirectoryName(LoggingSubFolder)}! ONLY {LoggingSubFiles.Length} FILES FOUND");
+                    _archiveLogger.WriteLog($"--> NOT PURGING PATH {LoggingSubFolder}! ONLY {LoggingSubFiles.Length} FILES FOUND");
                     continue;
                 }
 
                 // Log that we're now purging this subfolder and remove all files where needed
-                _archiveLogger.WriteLog($"--> PURGING SUBFOLDER {Path.GetDirectoryName(LoggingSubFolder)}...");
+                _archiveLogger.WriteLog($"--> PURGING SUBFOLDER {LoggingSubFolder}...");
                 LoggingSubFiles = LoggingSubFiles
                     .OrderBy(FileFound => new FileInfo(FileFound).CreationTime)
                     .Take(LogArchiveConfig.ArchiveCleanupFileCount)
