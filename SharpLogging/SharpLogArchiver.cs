@@ -438,22 +438,22 @@ namespace SharpLogging
             // Log that we're trying to prune/cleanup our archive files found from our archive path now
             var LogArchivesLocated = Directory
                 .GetFiles(LogArchiveConfig.ArchivePath, ExtensionValue, SearchOption.AllDirectories)
-                .Where(FileObj => FileObj.Contains(LogArchiveConfig.ArchiveFileFilter))
                 .OrderBy(ArchiveObj => new FileInfo(ArchiveObj).LastWriteTime)
                 .Reverse();
 
             // Log our how many archives we found now and exit out of this routine if we're not at the trigger count
-            _archiveLogger.WriteLog($"PULLED A TOTAL OF {LogArchivesLocated.Count()} LOG ARCHIVE OBJECTS", LogType.InfoLog);
             if (LogArchivesLocated.Count() < LogArchiveConfig.ArchiveCleanupFileCount)
             {
                 // If less than the limit return out
                 int ArchiveLimit = LogArchiveConfig.ArchiveCleanupFileCount;
                 _archiveLogger.WriteLog($"NOT CLEANING OUT ARCHIVES SINCE OUR ARCHIVE COUNT IS LESS THAN OUR SPECIFIED VALUE OF {ArchiveLimit}", LogType.WarnLog);
+                _archiveLogger.WriteLog($"ONLY SAW A TOTAL OF {LogArchivesLocated.Count()} LOG ARCHIVES IN PATH {LogArchiveConfig.ArchivePath}", LogType.WarnLog);
                 return true;
             }
 
             // Now locate and delete the archive sets found that aren't desired for the history based on our configuration
             var ArchiveSetsToRemove = LogArchivesLocated.Take(LogArchiveConfig.ArchiveCleanupFileCount);
+            _archiveLogger.WriteLog($"FOUND A TOTAL OF {LogArchivesLocated.Count()} LOG ARCHIVES IN PATH {LogArchiveConfig.ArchivePath}", LogType.InfoLog);
             _archiveLogger.WriteLog($"REMOVING A TOTAL OF {ArchiveSetsToRemove.Count()} ARCHIVE FILES NOW...", LogType.InfoLog);
             _archiveLogger.WriteLog("RUNNING REMOVAL OPERATION IN BACKGROUND TO KEEP MAIN THREADS ALIVE AND WELL!", LogType.WarnLog);
 
