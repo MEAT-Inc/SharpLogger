@@ -125,10 +125,10 @@ namespace SharpLogging
             public int ArchiveCleanupFileCount = 50;
 
             // Public facing fields for subfolder cleanup configuration
-            [DefaultValue(10)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public int SubFolderCleanupFileCount = 10;
             [DefaultValue(5)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-            public int SubFolderRemainingFileCount = 5;
+            public int SubFolderCleanupFileCount = 5;
+            [DefaultValue(0)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int SubFolderRemainingFileCount = 0;
 
             // Public facing fields to configure compression types for log archives
             [JsonIgnore] public CompressionLevel CompressionLevel = CompressionLevel.Optimal;
@@ -275,8 +275,8 @@ namespace SharpLogging
             // Make sure we've got a valid log archive configuration value built out here for filtering files
             if (_logArchiveConfig.ArchiveFileSetSize <= 0) _logArchiveConfig.ArchiveFileSetSize = 15;
             if (_logArchiveConfig.ArchiveOnFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 20;
-            if (_logArchiveConfig.SubFolderCleanupFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 10;
-            if (_logArchiveConfig.SubFolderRemainingFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 5;
+            if (_logArchiveConfig.SubFolderCleanupFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 5;
+            if (_logArchiveConfig.SubFolderRemainingFileCount < 0) _logArchiveConfig.ArchiveOnFileCount = 0;
             if (_logArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchivePath))
                 _logArchiveConfig.ArchivePath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
