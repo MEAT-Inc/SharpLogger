@@ -124,6 +124,12 @@ namespace SharpLogging
             [DefaultValue(50)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
             public int ArchiveCleanupFileCount = 50;
 
+            // Public facing fields for subfolder cleanup configuration
+            [DefaultValue(10)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int SubFolderCleanupFileCount = 10;
+            [DefaultValue(5)] [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+            public int SubFolderRemainingFileCount = 5;
+
             // Public facing fields to configure compression types for log archives
             [JsonIgnore] public CompressionLevel CompressionLevel = CompressionLevel.Optimal;
             [JsonIgnore] public CompressionType CompressionStyle = CompressionType.ZipCompression;
@@ -233,6 +239,9 @@ namespace SharpLogging
                 $"\t\\__ Search Path:     {LogArchiveConfig.SearchPath}\n" +
                 $"\t\\__ Archive Path:    {LogArchiveConfig.ArchivePath}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
+                $"\t\\__ Child Cleanup:   {LogArchiveConfig.SubFolderCleanupFileCount} file{(LogArchiveConfig.SubFolderCleanupFileCount != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Child Leftovers: {LogArchiveConfig.SubFolderRemainingFileCount} file{(LogArchiveConfig.SubFolderRemainingFileCount != 1 ? "s" : string.Empty)}\n" +
+                $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
                 $"\t\\__ Archive Logger:  {_archiveLogger.LoggerName}\n" + 
                 $"\t\\__ Logger Targets:  {_archiveLogger.LoggerType}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
@@ -266,6 +275,8 @@ namespace SharpLogging
             // Make sure we've got a valid log archive configuration value built out here for filtering files
             if (_logArchiveConfig.ArchiveFileSetSize <= 0) _logArchiveConfig.ArchiveFileSetSize = 15;
             if (_logArchiveConfig.ArchiveOnFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 20;
+            if (_logArchiveConfig.SubFolderCleanupFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 10;
+            if (_logArchiveConfig.SubFolderRemainingFileCount <= 0) _logArchiveConfig.ArchiveOnFileCount = 5;
             if (_logArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchivePath))
                 _logArchiveConfig.ArchivePath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
@@ -499,7 +510,7 @@ namespace SharpLogging
             {
                 // Log we're cleaning out this sub folder now and purge it
                 string[] LoggingSubFiles = Directory.GetFiles(LoggingSubFolder);
-                if (LoggingSubFiles.Length < LogArchiveConfig.ArchiveOnFileCount)
+                if (LoggingSubFiles.Length < LogArchiveConfig.SubFolderCleanupFileCount)
                 {
                     // Log we're skipping this path value and move on
                     _archiveLogger.WriteLog($"--> NOT PURGING PATH {LoggingSubFolder}! ONLY {LoggingSubFiles.Length} FILES FOUND");
@@ -510,7 +521,7 @@ namespace SharpLogging
                 _archiveLogger.WriteLog($"--> PURGING SUBFOLDER {LoggingSubFolder}...");
                 LoggingSubFiles = LoggingSubFiles
                     .OrderBy(FileFound => new FileInfo(FileFound).CreationTime)
-                    .Take(LogArchiveConfig.ArchiveCleanupFileCount)
+                    .Take(LoggingSubFiles.Length - LogArchiveConfig.SubFolderRemainingFileCount)
                     .ToArray();
 
                 // Now remove every file from this newly built subset of file paths
