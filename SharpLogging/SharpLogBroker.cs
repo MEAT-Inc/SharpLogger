@@ -276,18 +276,12 @@ namespace SharpLogging
                 throw new InvalidOperationException("Error! Please configure the SharpLogBroker before using archives!");
 
             // Using all the build child folder objects, convert them into a string of values now
-            var LoggingFoldersFound = LoggingSubfolderFiles;
+            var LoggingFoldersFound = LoggingSubfolders;
             string ChildFolderInfos = LoggingFoldersFound.Length == 0
                 ? "No Child Directories"
                 : "\n" + string.Join("\n", LoggingFoldersFound
-                    .Select(FolderInfo =>
-                    {
-                        // Build our information string and return it out here
-                        int FileCount = FolderInfo.Item2.Count();
-                        return FolderInfo.Item1 + " - " + (FileCount == 0
-                            ? "No Files Found"
-                            : $"{FileCount} File{(FileCount == 1 ? string.Empty : "s")}");
-                    }).Select(FolderInfoString => $"\t\t\\__ {FolderInfoString}"));
+                    .OrderBy(LogFolder => LogFolder.Length)
+                    .Select(FolderInfoString => $"\t\t\\__ {FolderInfoString}"));
 
             // Build the output string to return based on properties
             string OutputString =
