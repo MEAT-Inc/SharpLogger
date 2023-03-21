@@ -70,6 +70,8 @@ namespace SharpLogger_Tests.TestSuites
                         ""ArchiveFileSetSize"": 0,
                         ""ArchiveOnFileCount"": 0,
                         ""ArchiveCleanupFileCount"": 0,
+                        ""SubFolderCleanupFileCount"": 5,
+                        ""SubFolderRemainingFileCount"": 0,
                         ""CompressionLevel"": null,
                         ""CompressionStyle"": null, 
                     },
@@ -80,6 +82,8 @@ namespace SharpLogger_Tests.TestSuites
                         ""ArchiveFileSetSize"": -10,
                         ""ArchiveOnFileCount"": 30,
                         ""ArchiveCleanupFileCount"": 100,
+                        ""SubFolderCleanupFileCount"": 5,
+                        ""SubFolderRemainingFileCount"": 0,
                         ""CompressionLevel"": null,
                         ""CompressionStyle"": null, 
                     }, 
@@ -90,6 +94,8 @@ namespace SharpLogger_Tests.TestSuites
                         ""ArchiveFileSetSize"": 15,
                         ""ArchiveOnFileCount"": 20,
                         ""ArchiveCleanupFileCount"": 50,
+                        ""SubFolderCleanupFileCount"": 5,
+                        ""SubFolderRemainingFileCount"": 0,
                         ""CompressionLevel"": ""Optimal"",
                         ""CompressionStyle"": ""ZipCompression"" 
                     }

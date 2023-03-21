@@ -35,6 +35,8 @@ namespace SharpLogger_Tests.TestSuites
                 ""ArchiveFileSetSize"": 15,
                 ""ArchiveOnFileCount"": 20,
                 ""ArchiveCleanupFileCount"": 50,
+                ""SubFolderCleanupFileCount"": 5,
+                ""SubFolderRemainingFileCount"": 0,
                 ""CompressionLevel"": ""Optimal"",
                 ""CompressionStyle"": ""ZipCompression""
             }";
@@ -100,6 +102,8 @@ namespace SharpLogger_Tests.TestSuites
                 ArchiveFileSetSize = 15,                             // The number of files to store in each archive
                 ArchiveOnFileCount = 20,                             // The number of files to trigger an archive event
                 ArchiveCleanupFileCount = 50,                        // The max number of archives to store in the ArchivePath
+                SubFolderCleanupFileCount = 5,                       // The number of child folder logs to leave before cleanup
+                SubFolderRemainingFileCount = 0,                     // The number of child folder log files to leave after cleanup
                 CompressionLevel = CompressionLevel.Optimal,         // The compression type for the archive generation
                 CompressionStyle = CompressionType.ZipCompression    // The type of archive to make (Zip or GZip)
             };

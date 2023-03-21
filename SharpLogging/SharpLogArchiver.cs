@@ -228,6 +228,7 @@ namespace SharpLogging
                 throw new InvalidOperationException("Error! Please configure the SharpLogBroker And SharpLogArchiver before using archives!");
 
             // Build the output string to return based on properties
+            int ChildFolderCount = SharpLogBroker.LoggingSubfolders.Length;
             string OutputString =
                 $"Log Archiver Information - '{SharpLogBroker.LogBrokerName} (Archives)' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Archiver State:  {(_logArchiverInitialized ? "Archiver Ready!" : "Archiver Not Configured!")}\n" +
@@ -239,6 +240,7 @@ namespace SharpLogging
                 $"\t\\__ Search Path:     {LogArchiveConfig.SearchPath}\n" +
                 $"\t\\__ Archive Path:    {LogArchiveConfig.ArchivePath}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
+                $"\t\\__ Child Folders:   {(ChildFolderCount == 0 ? "No Child Folders" : ChildFolderCount + $" Child Folder{(ChildFolderCount == 1 ? string.Empty : "s")}")}\n" +
                 $"\t\\__ Child Cleanup:   {LogArchiveConfig.SubFolderCleanupFileCount} file{(LogArchiveConfig.SubFolderCleanupFileCount != 1 ? "s" : string.Empty)}\n" +
                 $"\t\\__ Child Leftovers: {LogArchiveConfig.SubFolderRemainingFileCount} file{(LogArchiveConfig.SubFolderRemainingFileCount != 1 ? "s" : string.Empty)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +

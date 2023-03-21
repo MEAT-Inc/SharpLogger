@@ -112,6 +112,12 @@ namespace SharpLogging
             internal set => _logBrokerName = value;
         }
 
+        // Public facing properties holding configuration for child directories and files
+        public static string[] LoggingSubfolders => Directory.GetDirectories(LogFileFolder);
+        public static Tuple<string, IEnumerable<string>>[] LoggingSubfolderFiles =>
+            LoggingSubfolders.Select(ChildFolder =>
+                new Tuple<string, IEnumerable<string>>(ChildFolder, Directory.GetFiles(ChildFolder))).ToArray();
+
         // Main logger objects used to configure new child logger instances and the public logger pool
         public static SharpLogger MasterLogger
         {
@@ -269,6 +275,20 @@ namespace SharpLogging
             if (!LogBrokerInitialized)
                 throw new InvalidOperationException("Error! Please configure the SharpLogBroker before using archives!");
 
+            // Using all the build child folder objects, convert them into a string of values now
+            var LoggingFoldersFound = LoggingSubfolderFiles;
+            string ChildFolderInfos = LoggingFoldersFound.Length == 0
+                ? "No Child Directories"
+                : "\n" + string.Join("\n", LoggingFoldersFound
+                    .Select(FolderInfo =>
+                    {
+                        // Build our information string and return it out here
+                        int FileCount = FolderInfo.Item2.Count();
+                        return FolderInfo.Item1 + " - " + (FileCount == 0
+                            ? "No Files Found"
+                            : $"{FileCount} File{(FileCount == 1 ? string.Empty : "s")}");
+                    }).Select(FolderInfoString => $"\t\t\\__ {FolderInfoString}"));
+
             // Build the output string to return based on properties
             string OutputString =
                 $"Log Broker Information - '{LogBrokerName}' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
@@ -279,6 +299,7 @@ namespace SharpLogging
                 $"\t\\__ Max Log Level:  {MaxLevel} (NLevel: {_maxLevel})\n" +
                 $"\t\\__ Log File Name:  {LogFileName}\n" +
                 $"\t\\__ Log File Path:  {LogFilePath}\n" +
+                $"\t\\__ Child Folders:  {ChildFolderInfos}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
                 $"\t\\__ Loggers Built:  {LoggerPool.Length} Logger{(LoggerPool.Length != 1 ? "s" : string.Empty)} Constructed\n" +
                 $"\t\\__ Master Logger:  {(MasterLogger == null ? "No Master Built" : MasterLogger.LoggerName)}\n" +
@@ -411,7 +432,7 @@ namespace SharpLogging
                     _loggerPool[LoggerIndex].Dispose();
             }
 
-            // Reconfigure our master target objects for the newly set broker configuration
+            // Reconfigure our master file and console target objects for the newly set broker configuration
             MasterFileTarget = new FileTarget($"Master_{LogBrokerName}_FileTarget")
             {
                 // Define basic configuration and store the desired layout on it
@@ -420,8 +441,6 @@ namespace SharpLogging
                 ConcurrentWrites = true,
                 Layout = new SimpleLayout(DefaultFileFormat.LoggerFormatString),
             };
-
-            // Store new values for our master console target and setup the configuration for it
             MasterConsoleTarget = new ColoredConsoleTarget($"Master_{LogBrokerName}_ColoredConsoleTarget")
             {
                 // Setup our layout for content formatting and set our new highlighting rules
