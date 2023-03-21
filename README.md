@@ -110,6 +110,8 @@ The SharpLogger supports three main logging output types at this point, with sup
             "ArchiveFileSetSize": 15,
             "ArchiveOnFileCount": 20,
             "ArchiveCleanupFileCount": 50,
+            "SubFolderCleanupFileCount": 5,
+            "SubFolderRemainingFileCount": 0,
             "CompressionLevel": "Optimal",
             "CompressionStyle": "ZipCompression"
         }
@@ -150,7 +152,9 @@ The SharpLogger supports three main logging output types at this point, with sup
                 ArchiveFileSetSize = 15,                              // The number of files to store in each archiv
                 ArchiveOnFileCount = 20,                              // The number of files to trigger an archive even
                 ArchiveCleanupFileCount = 50,                         // The max number of archives to store in the ArchivePath
-                CompressionLevel = CompressionLevel.Optimal,          // The compression type for the archive generatio
+                SubFolderCleanupFileCount = 5,                        // The number of child folder logs to leave before cleanup
+                SubFolderRemainingFileCount = 0,                      // The number of child folder log files to leave after cleanup
+                CompressionLevel = CompressionLevel.Optimal,          // The compression type for the archive generation
                 CompressionStyle = CompressionType.ZipCompression     // The type of archive to make (Zip or GZip)
             };
 
@@ -220,6 +224,9 @@ The SharpLogger supports three main logging output types at this point, with sup
             \__ Search Path:     C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\
             \__ Archive Path:    C:\Program Files (x86)\MyOrg\MyCoolCSharpApp\LogArchives
             ----------------------------------------------------------------------------------------------------
+            \__ Child Cleanup:   5 files
+	        \__ Child Leftovers: 0 files
+        	----------------------------------------------------------------------------------------------------
             \__ Archive Logger:  LogArchiverLogger_5B4294FA-97DB-47B5-8535-FE132D861851
             \__ Logger Targets:  UniversalLogger
             ----------------------------------------------------------------------------------------------------
@@ -231,6 +238,8 @@ The SharpLogger supports three main logging output types at this point, with sup
                     "ArchiveFileSetSize": 15,
                     "ArchiveOnFileCount": 20,
                     "ArchiveCleanupFileCount": 50,
+		            "SubFolderCleanupFileCount": 5,
+		            "SubFolderRemainingFileCount": 0,
                     "CompressionLevel": "Optimal",
                     "CompressionStyle": "ZipCompression"
                 }
