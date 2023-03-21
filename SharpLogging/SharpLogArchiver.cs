@@ -236,17 +236,17 @@ namespace SharpLogging
                 $"Log Archiver Information - '{SharpLogBroker.LogBrokerName} (Archives)' - Version {Assembly.GetExecutingAssembly().GetName().Version}\n" +
                 $"\t\\__ Archiver State:  {(_logArchiverInitialized ? "Archiver Ready!" : "Archiver Not Configured!")}\n" +
                 $"\t\\__ Creation Time:   {_archiverCreated:g}\n" +
-                $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} file{(LogArchiveConfig.ArchiveFileSetSize != 1 ? "s" : string.Empty)}\n" +
-                $"\t\\__ Trigger Count:   {LogArchiveConfig.ArchiveOnFileCount} file{(LogArchiveConfig.ArchiveOnFileCount != 1 ? "s" : string.Empty)}\n" +
-                $"\t\\__ Max Archives:    {LogArchiveConfig.ArchiveCleanupFileCount} archive{(LogArchiveConfig.ArchiveCleanupFileCount != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Archive Size:    {LogArchiveConfig.ArchiveFileSetSize} File{(LogArchiveConfig.ArchiveFileSetSize != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Trigger Count:   {LogArchiveConfig.ArchiveOnFileCount} File{(LogArchiveConfig.ArchiveOnFileCount != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Max Archives:    {LogArchiveConfig.ArchiveCleanupFileCount} Archive{(LogArchiveConfig.ArchiveCleanupFileCount != 1 ? "s" : string.Empty)}\n" +
                 $"\t\\__ Search Filter:   {LogArchiveConfig.ArchiveFileFilter}\n" +
                 $"\t\\__ Search Path:     {LogArchiveConfig.SearchPath}\n" +
                 $"\t\\__ Archive Path:    {LogArchiveConfig.ArchivePath}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
                 $"\t\\__ Child Folders:   {(ChildFolderCount == 0 ? "No Child Folders" : ChildFolderCount + $" Child Folder{(ChildFolderCount == 1 ? string.Empty : "s")}")}\n" +
                 $"\t\\__ Files Counted:   {(ChildFolderCount == 0 ? "No Child Files" : ChildFileCount + $" File{(ChildFileCount == 1 ? string.Empty : "s")}")}\n" +
-                $"\t\\__ Child Cleanup:   {LogArchiveConfig.SubFolderCleanupFileCount} file{(LogArchiveConfig.SubFolderCleanupFileCount != 1 ? "s" : string.Empty)}\n" +
-                $"\t\\__ Child Leftovers: {LogArchiveConfig.SubFolderRemainingFileCount} file{(LogArchiveConfig.SubFolderRemainingFileCount != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Child Cleanup:   {LogArchiveConfig.SubFolderCleanupFileCount} File{(LogArchiveConfig.SubFolderCleanupFileCount != 1 ? "s" : string.Empty)}\n" +
+                $"\t\\__ Child Leftovers: {LogArchiveConfig.SubFolderRemainingFileCount} File{(LogArchiveConfig.SubFolderRemainingFileCount != 1 ? "s" : string.Empty)}\n" +
                 $"\t{string.Join(string.Empty, Enumerable.Repeat('-', 100))}\n" +
                 $"\t\\__ Archive Logger:  {_archiveLogger.LoggerName}\n" + 
                 $"\t\\__ Logger Targets:  {_archiveLogger.LoggerType}\n" +
