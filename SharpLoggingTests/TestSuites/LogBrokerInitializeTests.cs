@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -50,6 +51,35 @@ namespace SharpLogger_Tests.TestSuites
         #endregion //Structs and Classes
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Builds a new log broker session instance and sets it up so logging is turned off.
+        /// Then tries to write logging output to our desired output and makes sure nothing was made
+        /// </summary>
+        [TestMethod("Initialize No Logging Log Broker")]
+        public void InitializeNoLoggingBroker()
+        {
+            // Split our console output and build a new configuration
+            LoggerTestHelpers.SeparateConsole();
+
+            // Define a new log broker configuration and setup the log broker
+            SharpLogBroker.BrokerConfiguration BrokerConfiguration = new SharpLogBroker.BrokerConfiguration()
+            {
+                LogBrokerName = "MyCoolCSharpApp",                                  // Name of the logging session
+                LogFileName = "MyCoolCSharpApp_Logging_$LOGGER_TIME.log",           // Name of the log file to write
+                LogFilePath = "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp",    // Path to the log file to write
+                MinLogLevel = LogType.NoLogging,                                    // Setting these to NoLogging turns logging off
+                MaxLogLevel = LogType.NoLogging                                     // Setting these to NoLogging turns logging off
+            };
+
+            // Using the built configuration object, we can now initialize our log broker.
+            if (!SharpLogBroker.InitializeLogging(BrokerConfiguration))
+                throw new InvalidOperationException("Error! Failed to configure a new SharpLogging session!");
+
+            // Make sure the output log file does NOT have content here
+            Assert.IsTrue(!File.Exists(SharpLogBroker.LogFilePath), "Error! Even with logging off, our main log file was built!");
+            LoggerTestHelpers.LogTestMethodCompleted("Spawned a new broker configuration and validated logging was disabled for it!");
+        }
 
         /// <summary>
         /// Builds a new log broker and archiver configuration and applies them. This is the closest test to a real deployed environment

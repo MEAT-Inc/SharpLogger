@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NLog;
 using NLog.Config;
 using NLog.Layouts;
@@ -27,7 +29,6 @@ namespace SharpLogging
 
         // Private backing fields for logger states and values
         private static bool _logBrokerInitialized;                          // Sets if the log broker has been built or not at this point
-        private static bool _loggingEnabled = true;                         // Sets if logging is currently enabled or disabled for this log broker instance
         private static LogLevel _minLevel = LogLevel.Off;                   // Minimum logging level for this logging session (Defaults to trace for debug)
         private static LogLevel _maxLevel = LogLevel.Off;                   // Maximum logging level for this logging session (Defaults to fatal for all sessions)
                                                                          
@@ -67,28 +68,44 @@ namespace SharpLogging
         public static LogType MinLevel
         {
             get => _minLevel.ToLogType();
-            private set
+            set
             {
                 // Convert the value into a LogLevel and set it
-                LogLevel ConvertedLevel = value.ToNLevel();
-                _minLevel = ConvertedLevel;
+                _minLevel = value.ToNLevel();
+
+                // Find our current logging rules and see if they need to be updated or not
+                var CurrentLoggerRules = LoggingRules;
+                foreach (var LoggingRule in CurrentLoggerRules)
+                {
+                    // Update the level settings for the rule now
+                    LoggingRule.SetLoggingLevels(_minLevel, _maxLevel);
+                }
+
+                // Now reconfigure the log manager to apply the new rule changes
+                LogManager.ReconfigExistingLoggers();
             }
         }
         public static LogType MaxLevel
         {
             get => _maxLevel.ToLogType();
-            private set
+            set
             {
                 // Convert the value into a LogLevel and set it
-                LogLevel ConvertedLevel = value.ToNLevel();
-                _maxLevel = ConvertedLevel;
+                _maxLevel = value.ToNLevel();
+
+                // Find our current logging rules and see if they need to be updated or not
+                var CurrentLoggerRules = LoggingRules;
+                foreach (var LoggingRule in CurrentLoggerRules)
+                {
+                    // Update the level settings for the rule now
+                    LoggingRule.SetLoggingLevels(_minLevel, _maxLevel);
+                }
+
+                // Now reconfigure the log manager to apply the new rule changes
+                LogManager.ReconfigExistingLoggers();
             }
         }
-        public static bool LoggingEnabled
-        {
-            get => _loggingEnabled;
-            internal set => _loggingEnabled = value;
-        }
+        public static bool LoggingEnabled { get; set; }
 
         // Public facing properties holding configuration for logger session configuration
         public static string LogFileName
@@ -315,7 +332,7 @@ namespace SharpLogging
         /// Internal configuration method used to build and apply a no logging/default configuration
         /// </summary>
         /// <returns>True if logging is setup, false if it's not</returns>
-        internal static void InitializeLogging()
+        internal static bool InitializeLogging()
         {
             // Build our default configuration for logging and exit out
             LogBrokerConfig = new BrokerConfiguration()
@@ -331,6 +348,10 @@ namespace SharpLogging
             LoggingEnabled = false;
             _maxLevel = LogLevel.Off;
             _minLevel = LogLevel.Off;
+
+            // Set our initialization state to true even though no logging is configured
+            _logBrokerInitialized = true;
+            return _logBrokerInitialized;
         }
         /// <summary>
         /// Configures a new instance of a log broker for logging configuration/output for an application
@@ -339,84 +360,142 @@ namespace SharpLogging
         /// <param name="BrokerConfig">The broker configuration to use for building a new logging session</param>
         public static bool InitializeLogging(BrokerConfiguration BrokerConfig)
         {
-            // If this broker configuration is the default value for logging off, then just apply those values
-            if (BrokerConfig.IsDefault)
-            {
-                // Initialize logging for the default configuration and exit out 
-                InitializeLogging();
-                return false;
-            }
+            // If the configuration provided is default, setup a new no logging configuration
+            LogBrokerConfig = BrokerConfig;
+            if (LogBrokerConfig.IsDefault) InitializeLogging(); 
+            
+            // Execute configuration routines for the remainder of the needed broker properties now
+            if (!_initializeBrokerConfig())
+                throw new ConfigurationErrorsException("Error! Failed to validate a new log broker configuration!");
+            if (!_initializeLoggingPool())
+                throw new ConfigurationErrorsException("Error! Failed to initialize a new logger pool collection!");
+            if (!_initializeLoggingTargets())
+                throw new ConfigurationErrorsException("Error! Failed to configure new log broker master targets!");
+            if (!_initializeBrokerLogger())
+                throw new ConfigurationErrorsException("Error! Failed to spawn a new broker master logger instance!");
 
+            // Log out that we've configured a new session correctly and return out based on our initialization state
+            MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.InfoLog);
+            MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!\n\n{ToString()}", LogType.TraceLog);
+
+            // Return passed at this point since we've written all our logging routines out
+            return _logBrokerInitialized;
+        }
+
+        /// <summary>
+        /// Completes configuration of the log broker once we've provided a configuration to it
+        /// </summary>
+        /// <returns>True if our broker instance is updated and stored. False if not</returns>
+        /// <exception cref="ArgumentException">Thrown when the broker configuration provided is not usable</exception>
+        private static bool _initializeBrokerConfig()
+        {
             // Start by storing new configuration values for the log broker and archiver configurations
             _brokerCreated = DateTime.Now;
-            LogBrokerConfig = BrokerConfig;
-            LogBrokerName = string.IsNullOrWhiteSpace(BrokerConfig.LogBrokerName)
+            LogBrokerName = string.IsNullOrWhiteSpace(LogBrokerConfig.LogBrokerName)
                 ? AppDomain.CurrentDomain.FriendlyName
                     .Split(Path.DirectorySeparatorChar).Last()
                     .Split('.')[0].Replace(" ", string.Empty)
-                : BrokerConfig.LogBrokerName;
+                : LogBrokerConfig.LogBrokerName;
 
             // Check our logging level values provided in our configurations and see what needs to be updated
-            if ((int)BrokerConfig.MinLogLevel == 6 && (int)BrokerConfig.MaxLogLevel == 6) LoggingEnabled = false;
-            _minLevel = (int)BrokerConfig.MinLogLevel < 0 ? LogLevel.Trace : BrokerConfig.MinLogLevel.ToNLevel();
-            _maxLevel = (int)BrokerConfig.MaxLogLevel > 6 ? LogLevel.Fatal : BrokerConfig.MaxLogLevel.ToNLevel();
+            LoggingEnabled = ((int)LogBrokerConfig.MinLogLevel != 6 && (int)LogBrokerConfig.MaxLogLevel != 6);
+            if (!LoggingEnabled)
+            {
+                // If logging is disabled, then we setup our levels to be both Off/NoLogging
+                _minLevel = LogLevel.Off;
+                _maxLevel = LogLevel.Off;
+            }
+            else
+            {
+                // If logging is enabled, use the levels from our configuration file here
+                _minLevel = (int)LogBrokerConfig.MinLogLevel < 0
+                    ? LogLevel.Trace
+                    : LogBrokerConfig.MinLogLevel.ToNLevel();
+                _maxLevel = (int)LogBrokerConfig.MaxLogLevel > 6
+                    ? LogLevel.Fatal
+                    : LogBrokerConfig.MaxLogLevel.ToNLevel();
+            }
+
+            // Make sure our min level is less than the max level. If it's not, then switch them
+            if (_minLevel.Ordinal > _maxLevel.Ordinal)
+            {
+                // Store and swap the values for our min and max levels here
+                int MinInt = _minLevel.Ordinal;
+                int MaxInt = _maxLevel.Ordinal;
+
+                // Swap the values and move on
+                _minLevel = LogLevel.FromOrdinal(MaxInt);
+                _maxLevel = LogLevel.FromOrdinal(MinInt);
+            }
 
             // Now find our output log file path/name value and create the logging output file
             string LoggerTime = _brokerCreated.ToString("MMddyyy-HHmmss");
-            if (string.IsNullOrWhiteSpace(BrokerConfig.LogFilePath))
+            if (string.IsNullOrWhiteSpace(LogBrokerConfig.LogFilePath))
             {
                 // Store our new log file path value and exit out once stored since we now have a logging path
-                LogFileName = string.IsNullOrWhiteSpace(BrokerConfig.LogFileName)
-                    ?  $"{LogBrokerName}_Logging_{LoggerTime}.log"
-                    : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName).Replace($"$LOGGER_TIME", LoggerTime)}{Path.GetExtension(BrokerConfig.LogFileName)}";
-                
+                LogFileName = string.IsNullOrWhiteSpace(LogBrokerConfig.LogFileName)
+                    ? $"{LogBrokerName}_Logging_{LoggerTime}.log"
+                    : $"{Path.GetFileNameWithoutExtension(LogBrokerConfig.LogFileName).Replace($"$LOGGER_TIME", LoggerTime)}{Path.GetExtension(LogBrokerConfig.LogFileName)}";
+
                 // Build the full path based on the path to our calling executable
                 LogFilePath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LogFileName));
             }
             else
             {
                 // Try and find the name of the file if one is given
-                BrokerConfig.LogFilePath = Path.GetFullPath(BrokerConfig.LogFilePath);
+                _logBrokerConfig.LogFilePath = Path.GetFullPath(LogBrokerConfig.LogFilePath);
                 bool PathEndsWithDirChars =
-                    BrokerConfig.LogFilePath.EndsWith("" + Path.DirectorySeparatorChar) ||
-                    BrokerConfig.LogFilePath.EndsWith("" + Path.AltDirectorySeparatorChar);
+                    LogBrokerConfig.LogFilePath.EndsWith("" + Path.DirectorySeparatorChar) ||
+                    LogBrokerConfig.LogFilePath.EndsWith("" + Path.AltDirectorySeparatorChar);
 
                 // Now using the cleaned up path, find out if we've got a folder or a file being passed in
-                if (File.Exists(BrokerConfig.LogFilePath) || Path.HasExtension(BrokerConfig.LogFilePath))
+                if (File.Exists(LogBrokerConfig.LogFilePath) || Path.HasExtension(LogBrokerConfig.LogFilePath))
                 {
                     // If we found an actual file for the input path, we know that's the final result
-                    LogFileName = Path.GetFileName(BrokerConfig.LogFilePath);
-                    LogFilePath = Path.GetFullPath(BrokerConfig.LogFilePath.Trim());
+                    LogFileName = Path.GetFileName(LogBrokerConfig.LogFilePath);
+                    LogFilePath = Path.GetFullPath(LogBrokerConfig.LogFilePath.Trim());
                 }
-                else if (Directory.Exists(BrokerConfig.LogFilePath) || PathEndsWithDirChars || !Path.HasExtension(BrokerConfig.LogFilePath))
+                else if (Directory.Exists(LogBrokerConfig.LogFilePath) || PathEndsWithDirChars || !Path.HasExtension(LogBrokerConfig.LogFilePath))
                 {
                     // Setup a new log file name based on the instance name and the path given
-                    LogFileName = string.IsNullOrWhiteSpace(BrokerConfig.LogFileName)
+                    LogFileName = string.IsNullOrWhiteSpace(LogBrokerConfig.LogFileName)
                         ? $"{LogBrokerName}_Logging_{LoggerTime}.log"
-                        : $"{Path.GetFileNameWithoutExtension(BrokerConfig.LogFileName).Replace($"$LOGGER_TIME", LoggerTime)}{Path.GetExtension(BrokerConfig.LogFileName)}";
-                    
+                        : $"{Path.GetFileNameWithoutExtension(LogBrokerConfig.LogFileName).Replace($"$LOGGER_TIME", LoggerTime)}{Path.GetExtension(LogBrokerConfig.LogFileName)}";
+
                     // Build the full path based on the default output location and the log file name pulled in
-                    LogFilePath = Path.GetFullPath(Path.Combine(BrokerConfig.LogFilePath, LogFileName));
+                    LogFilePath = Path.GetFullPath(Path.Combine(LogBrokerConfig.LogFilePath, LogFileName));
                 }
                 else
                 {
                     // Throw a new failure here if we got to this point somehow. This means we didn't have a legal path value for the configuration
-                    string ArgNameAndValue = $"{nameof(BrokerConfig.LogFilePath)} -- {BrokerConfig.LogFilePath}";
+                    string ArgNameAndValue = $"{nameof(LogBrokerConfig.LogFilePath)} -- {LogBrokerConfig.LogFilePath}";
                     throw new ArgumentException($"Error! Broker configuration could not be used to setup logging! ({ArgNameAndValue})");
                 }
             }
-            
+
             // Using the newly build path and file name values, setup an output folder if it needs to be built
             LogFileFolder = Path.GetFullPath(LogFilePath.Replace(LogFileName, string.Empty));
             if (!Directory.Exists(LogFileFolder)) Directory.CreateDirectory(LogFileFolder);
 
             // Update our configuration to reflect the newly determined values for files
-            _logBrokerInitialized = true;
             _logBrokerConfig.MaxLogLevel = MaxLevel;
             _logBrokerConfig.MinLogLevel = MinLevel;
             _logBrokerConfig.LogFileName = LogFileName;
             _logBrokerConfig.LogFilePath = LogFilePath;
             _logBrokerConfig.LogBrokerName = LogBrokerName;
+
+            // The broker is configured if logging is enabled and out path values are setup correctly, or if logging is disabled
+            _logBrokerInitialized = LoggingEnabled == false || (LoggingEnabled && _logBrokerConfig.LogFilePath != null && _logBrokerConfig.LogFileName != null);
+            return _logBrokerInitialized;
+        }
+        /// <summary>
+        /// Creates our new logger pool if needed and removes all old logger objects
+        /// </summary>
+        /// <returns>True if the pool is cleared out. False if not</returns>
+        private static bool _initializeLoggingPool()
+        {
+            // Make sure the pool object exists first
+            _loggerPool ??= new List<SharpLogger>();
 
             // Lock our logger pool before accessing it for removal routines
             lock (_loggerPool)
@@ -424,8 +503,17 @@ namespace SharpLogging
                 // Wipe out the lists of old logger instances and targets here by disposing them all
                 for (int LoggerIndex = 0; LoggerIndex < _loggerPool.Count - 1; LoggerIndex++)
                     _loggerPool[LoggerIndex].Dispose();
-            }
 
+                // Return based on how many loggers are in the pool
+                return !_loggerPool.Any();
+            }
+        }
+        /// <summary>
+        /// Configures new master logging targets for file and console output
+        /// </summary>
+        /// <returns>True if the logger targets are built, false if not</returns>
+        private static bool _initializeLoggingTargets()
+        {
             // Reconfigure our master file and console target objects for the newly set broker configuration
             MasterFileTarget = new FileTarget($"Master_{LogBrokerName}_FileTarget")
             {
@@ -450,17 +538,51 @@ namespace SharpLogging
                 }
             };
 
+            // Return out if both targets were built correctly 
+            return MasterFileTarget != null && MasterConsoleTarget != null;
+        }
+        /// <summary>
+        /// Spawns and stores a new log broker logger instance. This is our main logging helper instance
+        /// </summary>
+        /// <returns>True if our logger is configured and stored. False if not</returns>
+        private static bool _initializeBrokerLogger()
+        {
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             LogManager.Configuration = new LoggingConfiguration();
-            MasterLogger = new SharpLogger(LoggerActions.UniversalLogger,"LogBrokerLogger");
-            MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.InfoLog);
-            MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!\n\n{ToString()}", LogType.TraceLog);
-            
-            // Return passed at this point since we've written all our logging routines out
-            return _logBrokerInitialized;
+            MasterLogger = new SharpLogger(LoggerActions.UniversalLogger, $"{LogBrokerName}_LogBrokerLogger");
+            MasterLogger.WriteLog($"MASTER LOGGER {MasterLogger.LoggerName} HAS BEEN SPAWNED CORRECTLY!", LogType.InfoLog);
+
+            // Return out if our logger instance was built or not 
+            return MasterLogger != null;
         }
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
+        
+        /// <summary>
+        /// Stores and applies new logging levels for this log broker session
+        /// </summary>
+        /// <param name="MinLogLevel">The minimum logging level</param>
+        /// <param name="MaxLogLevel">The maximum logging level</param>
+        public static void SetLogLevels(LogType MinLogLevel, LogType MaxLogLevel)
+        {
+            // Store our new logging level values and reconfigure targets
+            _minLevel = MinLogLevel.ToNLevel();
+            _maxLevel = MaxLogLevel.ToNLevel();
+            MasterLogger?.WriteLog($"CONFIGURED NEW LOGGING LEVELS! MIN LEVEL: {MinLogLevel} | MAX LEVEL: {MaxLogLevel}", LogType.InfoLog);
+            MasterLogger?.WriteLog($"APPLYING THESE NEW LOGGING LEVEL CHANGES TO ALL EXISTING LOGGING RULES NOW...", LogType.InfoLog);
+
+            // Find our current logging rules and see if they need to be updated or not
+            var CurrentLoggerRules = LoggingRules;
+            foreach (var LoggingRule in CurrentLoggerRules)
+            {
+                // Update the level settings for the rule now
+                LoggingRule.SetLoggingLevels(_minLevel, _maxLevel);
+            }
+
+            // Now reconfigure the log manager to apply the new rule changes
+            LogManager.ReconfigExistingLoggers();
+            MasterLogger?.WriteLog($"LOGGER LEVEL RECONFIGURATION HAS BEEN COMPLETED WITHOUT ISSUES!", LogType.InfoLog);
+        }
 
         /// <summary>
         /// Gets loggers based on a given type of logger.

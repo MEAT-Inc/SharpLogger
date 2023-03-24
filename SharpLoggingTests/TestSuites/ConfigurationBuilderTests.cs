@@ -25,7 +25,7 @@ namespace SharpLogger_Tests.TestSuites
         // Private backing JSON string used to configure this test instance
         private readonly string _jsonConfigurationStrings = @"
             {
-                ""BrokerConfigStrings"": [ 
+                ""BrokerConfigStrings"": [                            
                     { 
                         ""LogBrokerName"": null,
                         ""LogFilePath"": null, 
