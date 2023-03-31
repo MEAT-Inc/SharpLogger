@@ -417,7 +417,7 @@ namespace SharpLogging
             };
 
             // If we have the custom logger type specified, then build new default targets for this logger
-            if (!this.IsCustomLogger)
+            if (SharpLogBroker.LoggingEnabled && !this.IsCustomLogger)
             {
                 // Get our master target from the SharpLogBroker and add a rule into this logger for it
                 if (this.IsFileLogger || this.IsUniversalLogger)
