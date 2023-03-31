@@ -349,14 +349,14 @@ namespace SharpLogging
                 
                 // Remove the logger from the Broker pool and log out that we've completed this routine.
                 SharpLogBroker.DestroyLogger(this);
-                SharpLogBroker.MasterLogger.WriteLog($"CLEARED OUT ALL RULES AND TARGETS FOR LOGGER {this.LoggerName}!", LogType.TraceLog);
-                SharpLogBroker.MasterLogger.WriteLog($"LOGGER {this.LoggerName} HAS BEEN REMOVED FROM OUR BROKER!", LogType.TraceLog);
+                SharpLogBroker.MasterLogger?.WriteLog($"CLEARED OUT ALL RULES AND TARGETS FOR LOGGER {this.LoggerName}!", LogType.TraceLog);
+                SharpLogBroker.MasterLogger?.WriteLog($"LOGGER {this.LoggerName} HAS BEEN REMOVED FROM OUR BROKER!", LogType.TraceLog);
             }
             catch (Exception DestroyLoggerEx)
             {
                 // Log the Exception out using the log broker logger
-                SharpLogBroker.MasterLogger.WriteLog($"EXCEPTION THROWN DURING LOGGER REMOVAL PROCESS!", LogType.TraceLog);
-                SharpLogBroker.MasterLogger.WriteException($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
+                SharpLogBroker.MasterLogger?.WriteLog($"EXCEPTION THROWN DURING LOGGER REMOVAL PROCESS!", LogType.TraceLog);
+                SharpLogBroker.MasterLogger?.WriteException($"EXCEPTION IS BEING LOGGED BELOW", DestroyLoggerEx, LogType.TraceLog);
             }
         }
 
