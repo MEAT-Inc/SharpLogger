@@ -430,7 +430,7 @@ namespace SharpLogging
 
             // Now find our output log file path/name value and create the logging output file
             string LoggerTime = _brokerCreated.ToString("MMddyyy-HHmmss");
-            if (string.IsNullOrWhiteSpace(LogBrokerConfig.LogFilePath))
+            if (string.IsNullOrWhiteSpace(LogBrokerConfig.LogFilePath) || !Path.IsPathRooted(LogBrokerConfig.LogFilePath))
             {
                 // Store our new log file path value and exit out once stored since we now have a logging path
                 LogFileName = string.IsNullOrWhiteSpace(LogBrokerConfig.LogFileName)
@@ -438,7 +438,9 @@ namespace SharpLogging
                     : $"{Path.GetFileNameWithoutExtension(LogBrokerConfig.LogFileName).Replace($"$LOGGER_TIME", LoggerTime)}{Path.GetExtension(LogBrokerConfig.LogFileName)}";
 
                 // Build the full path based on the path to our calling executable
-                LogFilePath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LogFileName));
+                LogFilePath = Path.IsPathRooted(LogBrokerConfig.LogFilePath)
+                    ? Path.Combine(LogBrokerConfig.LogFilePath, LogFileName)
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, LogBrokerConfig.LogFilePath, LogFileName);
             }
             else
             {

@@ -285,7 +285,9 @@ namespace SharpLogging
             if (_logArchiveConfig.SubFolderRemainingFileCount < 0) _logArchiveConfig.ArchiveOnFileCount = 0;
             if (_logArchiveConfig.ArchiveCleanupFileCount <= 0) _logArchiveConfig.ArchiveCleanupFileCount = 50;
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.ArchivePath))
-                _logArchiveConfig.ArchivePath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
+                _logArchiveConfig.ArchivePath = Path.GetFullPath(SharpLogBroker.LogFileFolder); 
+            if (!Path.IsPathRooted(_logArchiveConfig.ArchivePath)) 
+                _logArchiveConfig.ArchivePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _logArchiveConfig.ArchivePath);
             if (string.IsNullOrWhiteSpace(_logArchiveConfig.SearchPath))
                 _logArchiveConfig.SearchPath = Path.GetFullPath(SharpLogBroker.LogFileFolder);
             if (_logArchiveConfig.SearchPath == _logArchiveConfig.ArchivePath)

@@ -66,8 +66,8 @@ namespace SharpLogger_Tests.TestSuites
             SharpLogBroker.BrokerConfiguration BrokerConfiguration = new SharpLogBroker.BrokerConfiguration()
             {
                 LogBrokerName = "MyCoolCSharpApp",                                  // Name of the logging session
+                LogFilePath = "MyCoolCSharpAppLogs",                                // Path to the log file to write
                 LogFileName = "MyCoolCSharpApp_Logging_$LOGGER_TIME.log",           // Name of the log file to write
-                LogFilePath = "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp",    // Path to the log file to write
                 MinLogLevel = LogType.NoLogging,                                    // Setting these to NoLogging turns logging off
                 MaxLogLevel = LogType.NoLogging                                     // Setting these to NoLogging turns logging off
             };
@@ -113,8 +113,8 @@ namespace SharpLogger_Tests.TestSuites
             SharpLogBroker.BrokerConfiguration BrokerConfiguration = new SharpLogBroker.BrokerConfiguration()
             {
                 LogBrokerName = "MyCoolCSharpApp",                                  // Name of the logging session
+                LogFilePath = "MyCoolCSharpAppLogs",                                // Path to the log file to write
                 LogFileName = "MyCoolCSharpApp_Logging_$LOGGER_TIME.log",           // Name of the log file to write
-                LogFilePath = "C:\\Program Files (x86)\\MyOrg\\MyCoolCSharpApp",    // Path to the log file to write
                 MinLogLevel = LogType.TraceLog,                                     // The lowest level of logging
                 MaxLogLevel = LogType.FatalLog                                      // The highest level of logging
             };
