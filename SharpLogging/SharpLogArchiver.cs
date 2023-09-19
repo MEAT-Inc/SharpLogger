@@ -300,7 +300,9 @@ namespace SharpLogging
             }
 
             // Ensure our new archive configuration values can be used for this routine
-            if (_logArchiveConfig.SearchPath == null || !Directory.Exists(_logArchiveConfig.SearchPath)) return false;
+            if (_logArchiveConfig.SearchPath == null) return false;
+            if (!Directory.Exists(_logArchiveConfig.SearchPath))
+                Directory.CreateDirectory(_logArchiveConfig.SearchPath);
 
             // Configure a new logger for this archive helper. Then try to build sets of files to archive
             _logArchiverInitialized = true;
