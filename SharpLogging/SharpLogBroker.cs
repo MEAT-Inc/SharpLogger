@@ -362,13 +362,11 @@ namespace SharpLogging
         {
             // If the configuration provided is default, setup a new no logging configuration
             LogBrokerConfig = BrokerConfig;
-            if (LogBrokerConfig.IsDefault) InitializeLogging(); 
-            
+            if (LogBrokerConfig.IsDefault) InitializeLogging();
+
             // Execute configuration routines for the remainder of the needed broker properties now
             if (!_initializeBrokerConfig())
                 throw new ConfigurationErrorsException("Error! Failed to validate a new log broker configuration!");
-            if (!_initializeLoggingPool())
-                throw new ConfigurationErrorsException("Error! Failed to initialize a new logger pool collection!");
             if (!_initializeLoggingTargets())
                 throw new ConfigurationErrorsException("Error! Failed to configure new log broker master targets!");
             if (!_initializeBrokerLogger())
@@ -491,34 +489,28 @@ namespace SharpLogging
             return _logBrokerInitialized;
         }
         /// <summary>
-        /// Creates our new logger pool if needed and removes all old logger objects
-        /// </summary>
-        /// <returns>True if the pool is cleared out. False if not</returns>
-        private static bool _initializeLoggingPool()
-        {
-            // Make sure the pool object exists first
-            _loggerPool ??= new List<SharpLogger>();
-
-            // Lock our logger pool before accessing it for removal routines
-            lock (_loggerPool)
-            {
-                // Wipe out the lists of old logger instances and targets here by disposing them all
-                for (int LoggerIndex = 0; LoggerIndex < _loggerPool.Count - 1; LoggerIndex++) 
-                {
-                    // Destroy our logger object here and move onto the next one
-                    DestroyLogger(_loggerPool[LoggerIndex]);
-                }
-
-                // Return out based on if we've got no loggers or not 
-                return !_loggerPool.Any();
-            }
-        }
-        /// <summary>
         /// Configures new master logging targets for file and console output
         /// </summary>
         /// <returns>True if the logger targets are built, false if not</returns>
         private static bool _initializeLoggingTargets()
         {
+            // Lock our logger pool before running this operation
+            List<SharpLogger> FileLoggers = new List<SharpLogger>();
+            lock (_loggerPool)
+            {
+                // Setup a temp list of logger targets to reconfigure
+                foreach (var LoggerInstance in _loggerPool)
+                {
+                    // Check if the logger has our existing targets
+                    if (MasterFileTarget == null) break;
+                    if (!LoggerInstance.LoggerTargets.Contains(MasterFileTarget)) continue;
+                    
+                    // Remove the master target and add this logger to our temp list
+                    LoggerInstance.RemoveTarget(MasterFileTarget);
+                    FileLoggers.Add(LoggerInstance);
+                }
+            }
+
             // Reconfigure our master file and console target objects for the newly set broker configuration
             MasterFileTarget = new FileTarget($"Master_{LogBrokerName}_FileTarget")
             {
@@ -543,6 +535,10 @@ namespace SharpLogging
                 }
             };
 
+            // Now add back all file logger targets as needed
+            foreach (var ExistingLogger in FileLoggers)
+                ExistingLogger.RegisterTarget(MasterFileTarget);
+
             // Return out if both targets were built correctly 
             return MasterFileTarget != null && MasterConsoleTarget != null;
         }
@@ -552,6 +548,14 @@ namespace SharpLogging
         /// <returns>True if our logger is configured and stored. False if not</returns>
         private static bool _initializeBrokerLogger()
         {
+            // Lock the logger pool and try to purge previous loggers here
+            lock (_loggerPool) 
+            {
+                // Remove previous master loggers here
+                if (MasterLogger != null && _loggerPool.Contains(MasterLogger))
+                    DestroyLogger(MasterLogger);
+            }
+
             // Spawn a new SharpLogger which will use our master logger instance to write log output
             LogManager.Configuration = new LoggingConfiguration();
             MasterLogger = new SharpLogger(LoggerActions.UniversalLogger, $"{LogBrokerName}_LogBrokerLogger");

@@ -146,6 +146,10 @@ namespace SharpLogger_Tests.TestSuites
             var TestFileLogger = new SharpLogger(LoggerActions.FileLogger, "TestFileLogger");
             TestFileLogger.WriteLog($"SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME {TestFileLogger.LoggerName}!", LogType.InfoLog);
 
+            // Using the built configuration object, we can now initialize our log broker.
+            if (!SharpLogBroker.InitializeLogging(BrokerConfiguration))
+                throw new InvalidOperationException("Error! Failed to configure a new SharpLogging session!");
+
             // Once done, log this test is completed and exit out 
             LoggerTestHelpers.LogTestMethodCompleted("Completed loading configurations for the \"README Broker Setup Snippets\" test without issues!");
         }
