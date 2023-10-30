@@ -503,10 +503,13 @@ namespace SharpLogging
             lock (_loggerPool)
             {
                 // Wipe out the lists of old logger instances and targets here by disposing them all
-                for (int LoggerIndex = 0; LoggerIndex < _loggerPool.Count - 1; LoggerIndex++)
-                    _loggerPool[LoggerIndex].Dispose();
+                for (int LoggerIndex = 0; LoggerIndex < _loggerPool.Count - 1; LoggerIndex++) 
+                {
+                    // Destroy our logger object here and move onto the next one
+                    DestroyLogger(_loggerPool[LoggerIndex]);
+                }
 
-                // Return based on how many loggers are in the pool
+                // Return out based on if we've got no loggers or not 
                 return !_loggerPool.Any();
             }
         }
@@ -677,7 +680,6 @@ namespace SharpLogging
         /// Removes the logger passed from the logger queue
         /// </summary>
         /// <param name="LoggerItem">Logger to yank</param>
-        /// <param name="DisposeLogger">When true, the logger instance will be disposed</param>
         /// <returns>True if the logger is removed. False if it is not</returns>
         internal static bool DestroyLogger(SharpLogger LoggerItem)
         {
