@@ -760,8 +760,8 @@ namespace SharpLogging
                 MethodBase MethodBase = new StackFrame(SkipFrames, false).GetMethod();
                 
                 // Store the declared type value here
-                DeclaredType = MethodBase.DeclaringType;
-                if (DeclaredType == null) { return MethodBase.Name; }
+                DeclaredType = MethodBase?.DeclaringType;
+                if (DeclaredType == null) { return MethodBase?.Name; }
 
                 // Skip frame increased and keep checking.
                 FullCallName = (DeclaredType.FullName + "." + MethodBase.Name).Replace("..", ".");
@@ -783,7 +783,7 @@ namespace SharpLogging
         {
             // Find the current method caller and store the stack. 
             MethodBase MethodBase = new StackFrame(SkipFrames, false).GetMethod();
-            if (MethodBase.DeclaringType == null) return string.Empty;
+            if (MethodBase?.DeclaringType == null) return string.Empty;
 
             // Store the full name value pulled in here
             string FullClassName = MethodBase.DeclaringType.FullName;
