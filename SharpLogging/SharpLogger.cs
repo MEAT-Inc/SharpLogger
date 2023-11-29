@@ -363,17 +363,43 @@ namespace SharpLogging
         // ------------------------------------------------------------------------------------------------------------------------------------------
 
         /// <summary>
+        /// Static constructor for a SharpLogger which looks for an existing logger matching our given configuration or returns a new one if needed
+        /// </summary>
+        /// <param name="LoggerType">Type of actions/targets to configure for this logger</param>
+        /// <param name="MinLevel">Min Log Level for output values being written</param>
+        /// <param name="MaxLevel">Max Log Level for output values being written</param>
+        /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
+        /// <returns>An existing logger if found, or a new logger if no existing ones could be located</returns>
+        public static SharpLogger AllocateLogger(LoggerActions LoggerType, string LoggerName, LogType MinLevel = LogType.NoLogging, LogType MaxLevel = LogType.NoLogging)
+        {
+            // If the broker isn't built, just set it up with no logging levels supported
+            if (!SharpLogBroker.LogBrokerInitialized) SharpLogBroker.InitializeLogging();
+
+            // Try and find a logger that matches the given configuration in our log broker pool first
+            SharpLogger ExistingLogger = SharpLogBroker
+                .FindLoggers(LoggerType)
+                .Where(LoggerObj => LoggerObj.MinLevel == MinLevel && LoggerObj.MaxLevel == MaxLevel)
+                .FirstOrDefault(LoggerObj => LoggerObj.LoggerName.Contains(LoggerName));
+
+            // If the existing logger is found, return it out. Otherwise return a new logger object
+            return ExistingLogger ?? new SharpLogger(LoggerType, LoggerName, MinLevel, MaxLevel);
+        }
+        /// <summary>
         /// Builds a new FalconLogger object and adds it to the logger pool.
         /// </summary>
         /// <param name="LoggerType">Type of actions/targets to configure for this logger</param>
         /// <param name="MinLevel">Min Log Level for output values being written</param>
         /// <param name="MaxLevel">Max Log Level for output values being written</param>
         /// <param name="LoggerName">Name of this logger which will be included in the output strings for it</param>
-        public SharpLogger(LoggerActions LoggerType, string LoggerName = "", LogType MinLevel = LogType.TraceLog, LogType MaxLevel = LogType.FatalLog)
+        public SharpLogger(LoggerActions LoggerType, string LoggerName = "", LogType MinLevel = LogType.NoLogging, LogType MaxLevel = LogType.NoLogging)
         {
             // If the broker isn't built, just set it up with no logging levels supported
             if (!SharpLogBroker.LogBrokerInitialized) SharpLogBroker.InitializeLogging();
-            
+
+            // Make sure our min and max levels are not setup to be no logging
+            if (MinLevel == LogType.NoLogging) MinLevel = SharpLogBroker.MinLevel;
+            if (MaxLevel == LogType.NoLogging) MaxLevel = SharpLogBroker.MaxLevel;
+
             // Set Min and Max logging levels and make sure they comply with the logging broker
             this.MinLevel = SharpLogBroker.MinLevel == LogType.NoLogging
                 ? LogType.NoLogging
@@ -452,7 +478,6 @@ namespace SharpLogging
 
         // ------------------------------------------------------------------------------------------------------------------------------------------
 
-
         /// <summary>
         /// Sets new scope properties onto our logger instances and clears out the old values
         /// </summary>
@@ -508,8 +533,9 @@ namespace SharpLogging
         /// <param name="Level">Level to log</param>
         public void WriteLog(string LogMessage, LogType Level = LogType.DebugLog)
         {
-            // Make sure logging is not set to off right now
+            // Make sure logging is not set to off right now and make sure our levels are usable
             if (!this.LoggingEnabled) return;
+            if (Level > this.MaxLevel || Level < this.MinLevel) return;
 
             // Using the built scope properties, write our log entries out to the targets now
             using (this._nLogger.PushScopeProperties(this.ScopeProperties))
@@ -538,6 +564,7 @@ namespace SharpLogging
         {
             // Make sure logging is not set to off right now and store the exception value
             if (!this.LoggingEnabled) return;
+            if (Level > this.MaxLevel || Level < this.MinLevel) return;
 
             // Using the built scope properties, write our log entries out to the targets now
             using (this._nLogger.PushScopeProperties(this.ScopeProperties))
@@ -585,15 +612,23 @@ namespace SharpLogging
                 lock (this._loggedExceptions) this._loggedExceptions.Add(LoggedEx);
 
                 // Log out information about the exception being thrown
-                this._nLogger.Log(LogLevels[0].ToNLevel(), MessageExInfo);
-                this._nLogger.Log(LogLevels[0].ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx.TargetSite}. DETAILS ARE SHOWN BELOW");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX MESSAGE {LoggedEx.Message}");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX SOURCE  {LoggedEx.Source}");
-                this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX TARGET  {LoggedEx.TargetSite?.Name}");
-                this._nLogger.Log(LogLevels[1].ToNLevel(),
-                    LoggedEx?.StackTrace == null
-                        ? "FURTHER DIAGNOSTIC INFO IS NOT AVAILABLE AT THIS TIME."
-                        : $"\tEX STACK\n{LoggedEx.StackTrace.Replace("\n", "\n\t")}");
+                if (LogLevels[0] <= this.MaxLevel && LogLevels[0] >= this.MinLevel)
+                {
+                    // Log out our exception information if the levels provided are usable
+                    this._nLogger.Log(LogLevels[0].ToNLevel(), MessageExInfo);
+                    this._nLogger.Log(LogLevels[0].ToNLevel(), $"EXCEPTION THROWN FROM {LoggedEx.TargetSite}. DETAILS ARE SHOWN BELOW");
+                }
+                if (LogLevels[1] <= this.MaxLevel && LogLevels[1] >= this.MinLevel)
+                {
+                    // Log out our detailed exception information if the levels provided are usable
+                    this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX MESSAGE {LoggedEx.Message}");
+                    this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX SOURCE  {LoggedEx.Source}");
+                    this._nLogger.Log(LogLevels[1].ToNLevel(), $"\tEX TARGET  {LoggedEx.TargetSite?.Name}");
+                    this._nLogger.Log(LogLevels[1].ToNLevel(),
+                        LoggedEx?.StackTrace == null
+                            ? "FURTHER DIAGNOSTIC INFO IS NOT AVAILABLE AT THIS TIME."
+                            : $"\tEX STACK\n{LoggedEx.StackTrace.Replace("\n", "\n\t")}");
+                }
 
                 // Check to see if our inner exception is null or not
                 if (LoggedEx.InnerException == null) return;
@@ -613,6 +648,7 @@ namespace SharpLogging
         {
             // Make sure logging is not set to off right now
             if (!this.LoggingEnabled) return;
+            if (Level > this.MaxLevel || Level < this.MinLevel) return;
 
             // Convert the object to a string and split it out based on new line characters if we're using JSON tabs
             string ObjectString = JsonConvert.SerializeObject(ObjectToLog, UseTabs ? Formatting.Indented : Formatting.None);

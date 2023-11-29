@@ -115,7 +115,7 @@ namespace SharpLogger_Tests.TestSuites
                 LogBrokerName = "MyCoolCSharpApp",                                  // Name of the logging session
                 LogFilePath = "MyCoolCSharpAppLogs",                                // Path to the log file to write
                 LogFileName = "MyCoolCSharpApp_Logging_$LOGGER_TIME.log",           // Name of the log file to write
-                MinLogLevel = LogType.TraceLog,                                     // The lowest level of logging
+                MinLogLevel = LogType.InfoLog,                                     // The lowest level of logging
                 MaxLogLevel = LogType.FatalLog                                      // The highest level of logging
             };
 
@@ -144,6 +144,7 @@ namespace SharpLogger_Tests.TestSuites
 
             // Log some basic information out and spawn a new logger for testing
             var TestFileLogger = new SharpLogger(LoggerActions.FileLogger, "TestFileLogger");
+            TestFileLogger.WriteLog("THIS LOG ENTRY SHOULD NOT SHOW UP!", LogType.DebugLog);
             TestFileLogger.WriteLog($"SPAWNED FILE LOGGER REPORTING IN! LOGGER NAME {TestFileLogger.LoggerName}!", LogType.InfoLog);
 
             // Using the built configuration object, we can now initialize our log broker.
