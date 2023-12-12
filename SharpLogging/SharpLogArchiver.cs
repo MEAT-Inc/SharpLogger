@@ -261,8 +261,9 @@ namespace SharpLogging
         /// Configures a new session for Log archiving based on the configuration value provided in here
         /// </summary>
         /// <param name="ArchiveConfig">The configuration to spawn in with for archiving</param>
+        /// <param name="LogArchiverState">Sets if we should log out the status of our archiver once built or not</param>
         /// <returns>True if the configuration is loaded and usable. False if not</returns>
-        public static bool InitializeArchiving(ArchiveConfiguration ArchiveConfig)
+        public static bool InitializeArchiving(ArchiveConfiguration ArchiveConfig, bool LogArchiverState = true)
         {
             // If the log broker is not built, then we can't run this routine. 
             if (!SharpLogBroker.LogBrokerInitialized)
@@ -307,8 +308,8 @@ namespace SharpLogging
             // Configure a new logger for this archive helper. Then try to build sets of files to archive
             _logArchiverInitialized = true;
             _archiveLogger = new SharpLogger(LoggerActions.UniversalLogger, "LogArchiverLogger");
-            _archiveLogger.WriteLog("ARCHIVE HELPER BUILT WITHOUT ISSUES! READY TO PULL IN ARCHIVES USING PROVIDED CONFIGURATION!", LogType.InfoLog);
-            _archiveLogger.WriteLog($"SHOWING LOG ARCHIVER STATE AND CONFIGURATION BELOW\n\n{ToString()}", LogType.TraceLog);
+            _archiveLogger.WriteLog("ARCHIVE HELPER BUILT WITHOUT ISSUES! READY TO PULL IN ARCHIVES USING PROVIDED CONFIGURATION!", LogType.InfoLog); 
+            if (LogArchiverState) _archiveLogger.WriteLog($"SHOWING LOG ARCHIVER STATE AND CONFIGURATION BELOW\n\n{ToString()}", LogType.TraceLog);
 
             // Find all the files to be archived now and setup triggers for file counts
             _archiveLogger.WriteLog($"ATTEMPTING TO BUILD ARCHIVE SETS FOR INPUT PATH: {_logArchiveConfig.SearchPath}...", LogType.WarnLog);

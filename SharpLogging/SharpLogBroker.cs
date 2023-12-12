@@ -358,7 +358,8 @@ namespace SharpLogging
         /// When a name of a file is provided to output file path, the name of the log file is used
         /// </summary>
         /// <param name="BrokerConfig">The broker configuration to use for building a new logging session</param>
-        public static bool InitializeLogging(BrokerConfiguration BrokerConfig)
+        /// <param name="LogBrokerState">Sets if we should log out the status of our broker once built or not</param>
+        public static bool InitializeLogging(BrokerConfiguration BrokerConfig, bool LogBrokerState = true)
         {
             // If the configuration provided is default, setup a new no logging configuration
             LogBrokerConfig = BrokerConfig;
@@ -374,7 +375,7 @@ namespace SharpLogging
 
             // Log out that we've configured a new session correctly and return out based on our initialization state
             MasterLogger.WriteLog("LOGGER BROKER BUILT AND SESSION MAIN LOGGER HAS BEEN BOOTED CORRECTLY!", LogType.InfoLog);
-            MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!\n\n{ToString()}", LogType.TraceLog);
+            if (LogBrokerState) MasterLogger.WriteLog($"SHOWING BROKER STATUS INFORMATION BELOW. HAPPY LOGGING!\n\n{ToString()}", LogType.TraceLog);
 
             // Return passed at this point since we've written all our logging routines out
             return _logBrokerInitialized;
